@@ -1,0 +1,3 @@
+repository='https://github.com/rapidsai/jitify.git'
+module=''
+tag='origin'

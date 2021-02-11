@@ -1,0 +1,6 @@
+sharable-dataframes/cython/*.cpp
+sharable-dataframes/cython/*.so
+sharable-dataframes/cython/record.txt
+
+# Ignore data files download by the script
+sharable-dataframes/data/weather

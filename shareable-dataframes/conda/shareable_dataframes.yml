@@ -1,0 +1,16 @@
+name: shareable_dataframes
+channels:
+  - rapidsai
+  - nvidia
+  - rapidsai-nightly
+  - conda-forge
+  - defaults
+dependencies:
+  - cudf=0.19.*
+  - rmm=0.19.*
+  - cmake>=3.18
+  - cmake_setuptools>=0.1.3
+  - python>=3.6,<3.8
+  - cython>=0.29,<0.30
+  - cudatoolkit=11.0
+  

@@ -1,0 +1,46 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/home/jdyer/Development/rapids-examples/thirdparty/_deps/libcudacxx-subbuild/CMakeFiles/libcudacxx-populate"
+		},
+		{
+			"file" : "/home/jdyer/Development/rapids-examples/thirdparty/_deps/libcudacxx-subbuild/CMakeFiles/libcudacxx-populate.rule"
+		},
+		{
+			"file" : "/home/jdyer/Development/rapids-examples/thirdparty/_deps/libcudacxx-subbuild/CMakeFiles/libcudacxx-populate-complete.rule"
+		},
+		{
+			"file" : "/home/jdyer/Development/rapids-examples/thirdparty/_deps/libcudacxx-subbuild/libcudacxx-populate-prefix/src/libcudacxx-populate-stamp/libcudacxx-populate-install.rule"
+		},
+		{
+			"file" : "/home/jdyer/Development/rapids-examples/thirdparty/_deps/libcudacxx-subbuild/libcudacxx-populate-prefix/src/libcudacxx-populate-stamp/libcudacxx-populate-mkdir.rule"
+		},
+		{
+			"file" : "/home/jdyer/Development/rapids-examples/thirdparty/_deps/libcudacxx-subbuild/libcudacxx-populate-prefix/src/libcudacxx-populate-stamp/libcudacxx-populate-download.rule"
+		},
+		{
+			"file" : "/home/jdyer/Development/rapids-examples/thirdparty/_deps/libcudacxx-subbuild/libcudacxx-populate-prefix/src/libcudacxx-populate-stamp/libcudacxx-populate-update.rule"
+		},
+		{
+			"file" : "/home/jdyer/Development/rapids-examples/thirdparty/_deps/libcudacxx-subbuild/libcudacxx-populate-prefix/src/libcudacxx-populate-stamp/libcudacxx-populate-patch.rule"
+		},
+		{
+			"file" : "/home/jdyer/Development/rapids-examples/thirdparty/_deps/libcudacxx-subbuild/libcudacxx-populate-prefix/src/libcudacxx-populate-stamp/libcudacxx-populate-configure.rule"
+		},
+		{
+			"file" : "/home/jdyer/Development/rapids-examples/thirdparty/_deps/libcudacxx-subbuild/libcudacxx-populate-prefix/src/libcudacxx-populate-stamp/libcudacxx-populate-build.rule"
+		},
+		{
+			"file" : "/home/jdyer/Development/rapids-examples/thirdparty/_deps/libcudacxx-subbuild/libcudacxx-populate-prefix/src/libcudacxx-populate-stamp/libcudacxx-populate-test.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"libcudacxx-populate"
+		],
+		"name" : "libcudacxx-populate"
+	}
+}

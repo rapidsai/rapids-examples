@@ -1,0 +1,46 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/home/jdyer/Development/rapids-examples/thirdparty/_deps/jitify-subbuild/CMakeFiles/jitify-populate"
+		},
+		{
+			"file" : "/home/jdyer/Development/rapids-examples/thirdparty/_deps/jitify-subbuild/CMakeFiles/jitify-populate.rule"
+		},
+		{
+			"file" : "/home/jdyer/Development/rapids-examples/thirdparty/_deps/jitify-subbuild/CMakeFiles/jitify-populate-complete.rule"
+		},
+		{
+			"file" : "/home/jdyer/Development/rapids-examples/thirdparty/_deps/jitify-subbuild/jitify-populate-prefix/src/jitify-populate-stamp/jitify-populate-install.rule"
+		},
+		{
+			"file" : "/home/jdyer/Development/rapids-examples/thirdparty/_deps/jitify-subbuild/jitify-populate-prefix/src/jitify-populate-stamp/jitify-populate-mkdir.rule"
+		},
+		{
+			"file" : "/home/jdyer/Development/rapids-examples/thirdparty/_deps/jitify-subbuild/jitify-populate-prefix/src/jitify-populate-stamp/jitify-populate-download.rule"
+		},
+		{
+			"file" : "/home/jdyer/Development/rapids-examples/thirdparty/_deps/jitify-subbuild/jitify-populate-prefix/src/jitify-populate-stamp/jitify-populate-update.rule"
+		},
+		{
+			"file" : "/home/jdyer/Development/rapids-examples/thirdparty/_deps/jitify-subbuild/jitify-populate-prefix/src/jitify-populate-stamp/jitify-populate-patch.rule"
+		},
+		{
+			"file" : "/home/jdyer/Development/rapids-examples/thirdparty/_deps/jitify-subbuild/jitify-populate-prefix/src/jitify-populate-stamp/jitify-populate-configure.rule"
+		},
+		{
+			"file" : "/home/jdyer/Development/rapids-examples/thirdparty/_deps/jitify-subbuild/jitify-populate-prefix/src/jitify-populate-stamp/jitify-populate-build.rule"
+		},
+		{
+			"file" : "/home/jdyer/Development/rapids-examples/thirdparty/_deps/jitify-subbuild/jitify-populate-prefix/src/jitify-populate-stamp/jitify-populate-test.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"jitify-populate"
+		],
+		"name" : "jitify-populate"
+	}
+}
