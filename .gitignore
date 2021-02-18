@@ -7,3 +7,7 @@ sharable-dataframes/cpp/build
 
 # Ignore data files download by the script
 sharable-dataframes/data/weather
+
+.cache
+
+build
