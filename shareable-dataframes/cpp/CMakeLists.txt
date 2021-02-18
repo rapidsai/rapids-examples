@@ -1,10 +1,27 @@
-cmake_minimum_required(VERSION 3.14...3.17 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
 
-project(CUDA_DATAFRAME VERSION 0.18.0 LANGUAGES CXX CUDA)
+project(RAPIDS-EXAMPLES VERSION 0.19.0 LANGUAGES C CXX CUDA)
 
+# Ensure CUDA is avilable
 if(NOT CMAKE_CUDA_COMPILER)
   message(SEND_ERROR "CMake cannot locate a CUDA compiler")
 endif(NOT CMAKE_CUDA_COMPILER)
+
+option(BUILD_SHAREABLE_DATAFRAME "Build the strings_udf project" ON)
+set(SHAREABLE_DATAFRAME "shareable-dataframes")
+
+#################################################################################################
+# - CPM -----------------------------------------------------------------------------------------
+
+set(CPM_DOWNLOAD_VERSION 0.27.2) 
+set(CPM_DOWNLOAD_LOCATION "${CMAKE_BINARY_DIR}/cmake/CPM_${CPM_DOWNLOAD_VERSION}.cmake")
+
+if(NOT (EXISTS ${CPM_DOWNLOAD_LOCATION}))
+    message(STATUS "Downloading CPM.cmake")
+    file(DOWNLOAD https://github.com/TheLartians/CPM.cmake/releases/download/v${CPM_DOWNLOAD_VERSION}/CPM.cmake ${CPM_DOWNLOAD_LOCATION})
+endif()
+
+include(${CPM_DOWNLOAD_LOCATION})
 
 ###################################################################################################
 # - build type ------------------------------------------------------------------------------------
@@ -24,11 +41,9 @@ set(CMAKE_CUDA_STANDARD 14)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 
 if(CMAKE_COMPILER_IS_GNUCXX)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unknown-pragmas")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=deprecated-declarations -Wno-dev")
-    # Suppress parentheses warning which causes gmock to fail
-    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler=-Wno-parentheses -Wno-dev")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=deprecated-declarations")
 endif(CMAKE_COMPILER_IS_GNUCXX)
 
 if(CMAKE_CUDA_COMPILER_VERSION)
@@ -46,144 +61,112 @@ message(STATUS "CUDA_VERSION: ${CUDA_VERSION}")
 # Always set this convenience variable
 set(CUDA_VERSION_STRING "${CUDA_VERSION}")
 
-# Auto-detect available GPU compute architectures
-set(GPU_ARCHS "ALL" CACHE STRING
-  "List of GPU architectures (semicolon-separated) to be compiled for. Pass 'ALL' if you want to compile for all supported GPU architectures. Empty string means to auto-detect the GPUs on the current system")
+# For now lets keep it simple and only compile CUDA code for specific architectures
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -w --expt-extended-lambda --expt-relaxed-constexpr -gencode arch=compute_70,code=sm_70")
 
-if("${GPU_ARCHS}" STREQUAL "ALL")
-  
-  # Check for embedded vs workstation architectures
-  if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
-    # This is being built for Linux4Tegra or SBSA ARM64
-    set(GPU_ARCHS "62")
-    if((CUDA_VERSION_MAJOR EQUAL 9) OR (CUDA_VERSION_MAJOR GREATER 9))
-      set(GPU_ARCHS "${GPU_ARCHS};72")
-    endif()
-    if((CUDA_VERSION_MAJOR EQUAL 11) OR (CUDA_VERSION_MAJOR GREATER 11))
-      set(GPU_ARCHS "${GPU_ARCHS};75;80")
-    endif()
+###################################################################################################
+# - cmake modules ---------------------------------------------------------------------------------
 
-  else()
-    # This is being built for an x86 or x86_64 architecture
-    set(GPU_ARCHS "60")
-    if((CUDA_VERSION_MAJOR EQUAL 9) OR (CUDA_VERSION_MAJOR GREATER 9))
-      set(GPU_ARCHS "${GPU_ARCHS};70")
-    endif()
-    if((CUDA_VERSION_MAJOR EQUAL 10) OR (CUDA_VERSION_MAJOR GREATER 10))
-      set(GPU_ARCHS "${GPU_ARCHS};75")
-    endif()
-    if((CUDA_VERSION_MAJOR EQUAL 11) OR (CUDA_VERSION_MAJOR GREATER 11))
-      set(GPU_ARCHS "${GPU_ARCHS};80")
-    endif()
+set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/" ${CMAKE_MODULE_PATH})
 
-  endif()
-  
+####################################################################################################
+# - SPDLOG -----------------------------------------------------------------------------------------
+
+CPMAddPackage(
+    NAME spdlog
+    GITHUB_REPOSITORY gabime/spdlog
+    VERSION 1.7.0)
+
+####################################################################################################
+# - cxxopts ----------------------------------------------------------------------------------------
+
+CPMAddPackage(
+  NAME cxxopts
+  GITHUB_REPOSITORY jarro2783/cxxopts
+  VERSION 2.2.0
+  OPTIONS
+    "CXXOPTS_BUILD_EXAMPLES Off"
+    "CXXOPTS_BUILD_TESTS Off"
+)
+
+####################################################################################################
+# - cudf -------------------------------------------------------------------------------------------
+
+# XXX - Waiting on PR https://github.com/rapidsai/cudf/pull/7107 before this can be added
+function(find_and_configure_cudf VERSION)
+
+    CPMAddPackage(NAME  cudf
+        VERSION         ${VERSION}
+        #GIT_REPOSITORY  https://github.com/rapidsai/cudf.git
+        #GIT_TAG         branch-0.19-latest
+        GIT_REPOSITORY  https://github.com/trxcllnt/cudf.git
+        GIT_TAG         fix/cmake-exports
+        GIT_SHALLOW     TRUE
+        SOURCE_SUBDIR   cpp
+        OPTIONS         "BUILD_TESTS OFF"
+                        "BUILD_BENCHMARKS OFF"
+                        "ARROW_STATIC_LIB ON"
+                        "JITIFY_USE_CACHE ON"
+                        "CUDA_STATIC_RUNTIME ON"
+                        "DISABLE_DEPRECATION_WARNING ON"
+                        "AUTO_DETECT_CUDA_ARCHITECTURES ON"
+    )
+
+endfunction()
+
+find_and_configure_cudf("0.19.0")
+
+# add_target(${PROJECT_NAME} SHARED "${src_files}")
+# target_link_libraries(${PROJECT_NAME} rmm::rmm cudf::cudf)
+
+######################################################################################################
+# - shareable_dataframes -----------------------------------------------------------------------------
+
+if(BUILD_SHAREABLE_DATAFRAME)
+  message(STATUS "Building ${BUILD_SHAREABLE_DATAFRAME} example")
+
+  # XXX - Understand if RMM will be included as part of the upcoming CPMAddPackage work for CUDF? If not will need to hack a way to add that here ourselves. Hopefully it is however.
+  add_executable(shareable_dataframe "${CMAKE_CURRENT_SOURCE_DIR}/src/kernel.cu"
+                                     "${CMAKE_CURRENT_SOURCE_DIR}/src/kernel_wrapper.cu"
+                             )
+
+  # XXX - Remove this hardcoded path evilness, only needed right now since CPM is not complete.
+  message(STATUS "Include directory I need: ${CMAKE_CURRENT_SOURCE_DIR}/${SHAREABLE_DATAFRAME}/include")
+  target_include_directories(shareable_dataframe PRIVATE 
+                            "${CMAKE_CURRENT_SOURCE_DIR}/${SHAREABLE_DATAFRAME}/include"
+                            "/home/jdyer/anaconda3/envs/cudf_dev/include"
+                            "/home/jdyer/anaconda3/envs/cudf_dev/include/libcudf/libcudacxx"
+                            "/home/jdyer/Development/cudf/thirdparty/jitify")
+
+  # XXX - Remove this hardcoded path evilness, only needed right now since CPM is not complete.
+  target_link_directories(shareable_dataframe PRIVATE "/home/jdyer/anaconda3/envs/cudf_dev/lib")
+  target_link_libraries(shareable_dataframe
+                        rmm::rmm
+                        cudf::cudf
+                        dl
+                        cuda
+                        nvrtc)
+
 endif()
-message("GPU_ARCHS = ${GPU_ARCHS}")
 
-foreach(arch ${GPU_ARCHS})
-  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -gencode=arch=compute_${arch},code=sm_${arch}")
-endforeach()
 
-list(GET GPU_ARCHS -1 ptx)
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -gencode=arch=compute_${ptx},code=compute_${ptx}")
-
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-extended-lambda --expt-relaxed-constexpr")
-
-# set warnings as errors
-# TODO: remove `no-maybe-unitialized` used to suppress warnings in rmm::exec_policy
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Werror=cross-execution-space-call -Xcompiler=-Wall,-Werror,-Wno-error=deprecated-declarations")
-
-option(DISABLE_DEPRECATION_WARNING "Disable warnings generated from deprecated declarations." OFF)
-if(DISABLE_DEPRECATION_WARNING)
-    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler=-Wno-deprecated-declarations")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations")
-endif(DISABLE_DEPRECATION_WARNING)
-
-# Option to enable line info in CUDA device compilation to allow introspection when profiling / memchecking
-option(CMAKE_CUDA_LINEINFO "Enable the -lineinfo option for nvcc (useful for cuda-memcheck / profiler" OFF)
-if(CMAKE_CUDA_LINEINFO)
-    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -lineinfo")
-endif(CMAKE_CUDA_LINEINFO)
-
-# Debug options
-if(CMAKE_BUILD_TYPE MATCHES Debug)
-    message(STATUS "Building with debugging flags")
-    set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -G -Xcompiler=-rdynamic")
-endif(CMAKE_BUILD_TYPE MATCHES Debug)
-
-# To apply RUNPATH to transitive dependencies (this is a temporary solution)
-set(CMAKE_SHARED_LINKER_FLAGS "-Wl,--disable-new-dtags")
-set(CMAKE_EXE_LINKER_FLAGS "-Wl,--disable-new-dtags")
-
-###################################################################################################
-# - cudart options --------------------------------------------------------------------------------
-# cudart can be statically linked or dynamically linked. The python ecosystem wants dynamic linking
-
-option(CUDA_STATIC_RUNTIME "Statically link the CUDA runtime" OFF)
-
-if(CUDA_STATIC_RUNTIME)
-    message(STATUS "Enabling static linking of cudart")
-    set(CUDART_LIBRARY "cudart_static")
-else()
-    set(CUDART_LIBRARY "cudart")
-endif(CUDA_STATIC_RUNTIME)
-
-###################################################################################################
-# - conda environment -----------------------------------------------------------------------------
-
-if("$ENV{CONDA_BUILD}" STREQUAL "1")
-    set(CMAKE_SYSTEM_PREFIX_PATH "$ENV{BUILD_PREFIX};$ENV{PREFIX};${CMAKE_SYSTEM_PREFIX_PATH}")
-    set(CONDA_INCLUDE_DIRS "$ENV{BUILD_PREFIX}/include" "$ENV{PREFIX}/include")
-    set(CONDA_LINK_DIRS "$ENV{BUILD_PREFIX}/lib" "$ENV{PREFIX}/lib")
-    message(STATUS "Conda build detected, CMAKE_SYSTEM_PREFIX_PATH set to: ${CMAKE_SYSTEM_PREFIX_PATH}")
-elseif(DEFINED ENV{CONDA_PREFIX})
-    set(CMAKE_SYSTEM_PREFIX_PATH "$ENV{CONDA_PREFIX};${CMAKE_SYSTEM_PREFIX_PATH}")
-    set(CONDA_INCLUDE_DIRS "$ENV{CONDA_PREFIX}/include")
-    set(CONDA_LINK_DIRS "$ENV{CONDA_PREFIX}/lib")
-    message(STATUS "Conda environment detected, CMAKE_SYSTEM_PREFIX_PATH set to: ${CMAKE_SYSTEM_PREFIX_PATH}")
-endif("$ENV{CONDA_BUILD}" STREQUAL "1")
-
-###################################################################################################
-# - include paths ---------------------------------------------------------------------------------
-
-# include_directories("${THRUST_INCLUDE_DIR}"
-#                     "${JITIFY_INCLUDE_DIR}"
-#                     "${LIBCUDACXX_INCLUDE_DIR}")
-
-if(CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES)
-	include_directories("${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
-endif(CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES)
-
-include_directories("${CMAKE_BINARY_DIR}/include"
-                    "${CMAKE_SOURCE_DIR}/include"
-                    "${CMAKE_SOURCE_DIR}/src")
-                    # "${ARROW_INCLUDE_DIR}"
-                    # "${ZLIB_INCLUDE_DIRS}"
-                    # "${Boost_INCLUDE_DIRS}"
-                    # "${RMM_INCLUDE}"
-                    # "${DLPACK_INCLUDE}")
-
-if(CONDA_INCLUDE_DIRS)
-    include_directories("${CONDA_INCLUDE_DIRS}")
-endif(CONDA_INCLUDE_DIRS)
-
-###################################################################################################
-# - library paths ---------------------------------------------------------------------------------
-
-link_directories("${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES}" # CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES is an undocumented/unsupported variable containing the link directories for nvcc
-                 "${CMAKE_BINARY_DIR}/lib"
-                 "${CMAKE_BINARY_DIR}")
-
-if(CONDA_LINK_DIRS)
-    link_directories("${CONDA_LINK_DIRS}")
-endif(CONDA_LINK_DIRS)
-
-###################################################################################################
-# - library targets -------------------------------------------------------------------------------
-add_library(kernel "src/kernel.cu" "src/kernel_wrapper.cu")
 
 # ###################################################################################################
-# # - link libraries --------------------------------------------------------------------------------
+# # - library paths ---------------------------------------------------------------------------------
 
-# target_link_libraries("${CUDF_PROXY_NAME}" "${CUDF_NAMESPACE}::${CUDF_BASE_NAME}" "${CUDF_MODULES}")
+# link_directories("${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES}" # CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES is an undocumented/unsupported variable containing the link directories for nvcc
+#                  "${CMAKE_BINARY_DIR}/lib"
+#                  "${CMAKE_BINARY_DIR}")
+
+# if(CONDA_LINK_DIRS)
+#     link_directories("${CONDA_LINK_DIRS}")
+# endif(CONDA_LINK_DIRS)
+
+# ###################################################################################################
+# # - library targets -------------------------------------------------------------------------------
+# add_library(kernel "src/kernel.cu" "src/kernel_wrapper.cu")
+
+# # ###################################################################################################
+# # # - link libraries --------------------------------------------------------------------------------
+
+# # target_link_libraries("${CUDF_PROXY_NAME}" "${CUDF_NAMESPACE}::${CUDF_BASE_NAME}" "${CUDF_MODULES}")
