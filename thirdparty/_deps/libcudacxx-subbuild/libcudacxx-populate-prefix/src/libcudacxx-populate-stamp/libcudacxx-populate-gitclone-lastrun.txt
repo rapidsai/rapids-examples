@@ -1,3 +1,0 @@
-repository='https://github.com/NVIDIA/libcudacxx.git'
-module=''
-tag='origin'

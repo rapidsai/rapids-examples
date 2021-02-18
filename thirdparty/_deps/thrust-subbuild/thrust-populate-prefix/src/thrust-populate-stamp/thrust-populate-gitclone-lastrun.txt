@@ -1,3 +1,0 @@
-repository='https://github.com/NVIDIA/thrust.git'
-module=''
-tag='origin'

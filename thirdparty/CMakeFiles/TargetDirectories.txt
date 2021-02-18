@@ -1,2 +1,0 @@
-/home/jdyer/Development/rapids-examples/thirdparty/CMakeFiles/rebuild_cache.dir
-/home/jdyer/Development/rapids-examples/thirdparty/CMakeFiles/edit_cache.dir
