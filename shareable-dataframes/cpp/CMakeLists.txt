@@ -89,32 +89,32 @@ CPMAddPackage(
     "CXXOPTS_BUILD_TESTS Off"
 )
 
-####################################################################################################
-# - cudf -------------------------------------------------------------------------------------------
+# ####################################################################################################
+# # - cudf -------------------------------------------------------------------------------------------
 
-# XXX - Waiting on PR https://github.com/rapidsai/cudf/pull/7107 before this can be added
-function(find_and_configure_cudf VERSION)
+# # XXX - Waiting on PR https://github.com/rapidsai/cudf/pull/7107 before this can be added
+# function(find_and_configure_cudf VERSION)
 
-    CPMAddPackage(NAME  cudf
-        VERSION         ${VERSION}
-        #GIT_REPOSITORY  https://github.com/rapidsai/cudf.git
-        #GIT_TAG         branch-0.19-latest
-        GIT_REPOSITORY  https://github.com/trxcllnt/cudf.git
-        GIT_TAG         fix/cmake-exports
-        GIT_SHALLOW     TRUE
-        SOURCE_SUBDIR   cpp
-        OPTIONS         "BUILD_TESTS OFF"
-                        "BUILD_BENCHMARKS OFF"
-                        "ARROW_STATIC_LIB ON"
-                        "JITIFY_USE_CACHE ON"
-                        "CUDA_STATIC_RUNTIME ON"
-                        "DISABLE_DEPRECATION_WARNING ON"
-                        "AUTO_DETECT_CUDA_ARCHITECTURES ON"
-    )
+#     CPMAddPackage(NAME  cudf
+#         VERSION         ${VERSION}
+#         #GIT_REPOSITORY  https://github.com/rapidsai/cudf.git
+#         #GIT_TAG         branch-0.19-latest
+#         GIT_REPOSITORY  https://github.com/trxcllnt/cudf.git
+#         GIT_TAG         fix/cmake-exports
+#         GIT_SHALLOW     TRUE
+#         SOURCE_SUBDIR   cpp
+#         OPTIONS         "BUILD_TESTS OFF"
+#                         "BUILD_BENCHMARKS OFF"
+#                         "ARROW_STATIC_LIB ON"
+#                         "JITIFY_USE_CACHE ON"
+#                         "CUDA_STATIC_RUNTIME ON"
+#                         "DISABLE_DEPRECATION_WARNING ON"
+#                         "AUTO_DETECT_CUDA_ARCHITECTURES ON"
+#     )
 
-endfunction()
+# endfunction()
 
-find_and_configure_cudf("0.19.0")
+# find_and_configure_cudf("0.19.0")
 
 # add_target(${PROJECT_NAME} SHARED "${src_files}")
 # target_link_libraries(${PROJECT_NAME} rmm::rmm cudf::cudf)
@@ -130,10 +130,13 @@ if(BUILD_SHAREABLE_DATAFRAME)
                                      "${CMAKE_CURRENT_SOURCE_DIR}/src/kernel_wrapper.cu"
                              )
 
+  # XXX - Do not hardcode these values!!!!
+  set_property(TARGET shareable_dataframe PROPERTY CUDA_ARCHITECTURES 72)
+
   # XXX - Remove this hardcoded path evilness, only needed right now since CPM is not complete.
-  message(STATUS "Include directory I need: ${CMAKE_CURRENT_SOURCE_DIR}/${SHAREABLE_DATAFRAME}/include")
   target_include_directories(shareable_dataframe PRIVATE 
-                            "${CMAKE_CURRENT_SOURCE_DIR}/${SHAREABLE_DATAFRAME}/include"
+                            "${CMAKE_CURRENT_SOURCE_DIR}/include"
+                            "${CMAKE_CURRENT_SOURCE_DIR}/src"
                             "/home/jdyer/anaconda3/envs/cudf_dev/include"
                             "/home/jdyer/anaconda3/envs/cudf_dev/include/libcudf/libcudacxx"
                             "/home/jdyer/Development/cudf/thirdparty/jitify")
@@ -141,8 +144,8 @@ if(BUILD_SHAREABLE_DATAFRAME)
   # XXX - Remove this hardcoded path evilness, only needed right now since CPM is not complete.
   target_link_directories(shareable_dataframe PRIVATE "/home/jdyer/anaconda3/envs/cudf_dev/lib")
   target_link_libraries(shareable_dataframe
-                        rmm::rmm
-                        cudf::cudf
+                        rmm
+                        cudf
                         dl
                         cuda
                         nvrtc)
@@ -154,13 +157,13 @@ endif()
 # ###################################################################################################
 # # - library paths ---------------------------------------------------------------------------------
 
-# link_directories("${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES}" # CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES is an undocumented/unsupported variable containing the link directories for nvcc
-#                  "${CMAKE_BINARY_DIR}/lib"
-#                  "${CMAKE_BINARY_DIR}")
+link_directories("${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES}" # CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES is an undocumented/unsupported variable containing the link directories for nvcc
+                 "${CMAKE_BINARY_DIR}/lib"
+                 "${CMAKE_BINARY_DIR}")
 
-# if(CONDA_LINK_DIRS)
-#     link_directories("${CONDA_LINK_DIRS}")
-# endif(CONDA_LINK_DIRS)
+if(CONDA_LINK_DIRS)
+    link_directories("${CONDA_LINK_DIRS}")
+endif(CONDA_LINK_DIRS)
 
 # ###################################################################################################
 # # - library targets -------------------------------------------------------------------------------
