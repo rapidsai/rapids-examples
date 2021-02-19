@@ -98,14 +98,11 @@ weather_df = cudf.read_csv(
 # Rainfall is stored as 1/10ths of MM.
 rainfall_df = weather_df[weather_df["type"] == "PRCP"]
 
-# Run the custom Kernel on the specified Dataframe Columns
-rainfall_kernel = cudfkernel.CudfWrapper(
-    rainfall_df
-)  
+# Wrap the rainfall_df for CUDA to consume
+rainfall_kernel = cudfkernel.CudfWrapper(rainfall_df)  
 
-rainfall_kernel.tenth_mm_to_inches(
-    4
-)  # column with index 4 is the "val" column
+# Run the custom Kernel on the specified Dataframe Columns, index 4 is the "val" column
+rainfall_kernel.tenth_mm_to_inches(4)
 
 # Shows head() after rainfall totals have been altered
 print(rainfall_df.head())
