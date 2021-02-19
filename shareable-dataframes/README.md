@@ -17,12 +17,18 @@ This is similar to an existing [weather notebook](https://github.com/rapidsai/no
 1. Clone the `rapids-examples` repo if you haven't already 
     - ```git clone https://github.com/rapidsai/rapids-examples.git```
     - ```cd rapids-examples/shareable-dataframes```
-2. Create the `shareable_dataframes` conda environment for the python code. 
+2. Compile C++ `kernel_wrapper` code and CUDA kernels
+    - ```cd cpp && mkdir build && cd build```
+    - ```cmake ..```
+    - ```make```
+3. Create the `shareable_dataframes` conda environment for the python code. 
     - ```conda env create -f ./conda/shareable_dataframes.yml --name shareable_dataframes```
-3. Activate the `shareable_dataframes` conda environment ```conda activate shareable_dataframes```
-3. Build the cython kernel_wrapper code. ```cd cython && python setup.py build install``` Notice the custom Kernel definitions are in `cython/src/kernel.cu`. This is just for example and the build can be altered as needed.
-4. Download weather data. A convenience Python script has been provided here to make that easier for you. By default it will download years 2010-2020 weather data. That data is about 300MB per file so if you need to download less files you can change that in the script. The data will be downloaded to ./data/weather. ```python ./data/download_data.py```
-5. Run the Python example script. It expects an input of a single Weather year file. EX: ```python ./01_python_kernel_wrapper.py ./data/weather/2010.csv.gz```
+4. Activate the `shareable_dataframes` conda environment ```conda activate shareable_dataframes```
+5. Build the cython kernel_wrapper code, this will also link against the previously compiled C++ code. 
+    - ```cd python && python setup.py build install``` 
+6. Download weather data. A convenience Python script has been provided here to make that easier for you. By default it will download years 2010-2020 weather data. That data is about 300MB per file so if you need to download less files you can change that in the script. The data will be downloaded to ./data/weather.
+    - ```python ./data/download_data.py```
+7. Run the Python example script. It expects an input of a single Weather year file.    - EX: ```python ./python/python_kernel_wrapper.py ./data/weather/2010.csv.gz```
 
 CUDA Kernel with existing business logic:
 ``` cpp
