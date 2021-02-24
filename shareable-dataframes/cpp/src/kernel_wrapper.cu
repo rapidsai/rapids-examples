@@ -36,12 +36,12 @@
   //    printf("%d type=%d, ptr=%p\n", c, static_cast<int>(c.type().id()), c.data<char>() );
   //  });
  
-   std::unique_ptr<cudf::mutable_column_device_view, std::function<void(cudf::mutable_column_device_view*)>> 
-   mutable_device_column = cudf::mutable_column_device_view::create(mtv.column(column_index));
+  //  std::unique_ptr<cudf::mutable_column_device_view, std::function<void(cudf::mutable_column_device_view*)>> 
+  //  mutable_device_column = cudf::mutable_column_device_view::create(mtv.column(column_index));
  
    // Invoke the Kernel to convert tenth_mm -> inches
-   kernel_tenth_mm_to_inches<<<(mtv.num_rows()+255)/256, 256>>>(*mutable_device_column);
-   cudaDeviceSynchronize();
+  //  kernel_tenth_mm_to_inches<<<(mtv.num_rows()+255)/256, 256>>>(*mutable_device_column);
+  //  cudaDeviceSynchronize();
  }
  
  CudfWrapper::~CudfWrapper() {

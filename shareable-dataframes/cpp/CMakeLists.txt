@@ -72,10 +72,10 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/" ${CMAKE_MODUL
 ####################################################################################################
 # - SPDLOG -----------------------------------------------------------------------------------------
 
-CPMAddPackage(
-    NAME spdlog
-    GITHUB_REPOSITORY gabime/spdlog
-    VERSION 1.7.0)
+# CPMAddPackage(
+#     NAME spdlog
+#     GITHUB_REPOSITORY gabime/spdlog
+#     VERSION 1.7.0)
 
 ####################################################################################################
 # - cxxopts ----------------------------------------------------------------------------------------
@@ -89,35 +89,52 @@ CPMAddPackage(
     "CXXOPTS_BUILD_TESTS Off"
 )
 
-# ####################################################################################################
-# # - cudf -------------------------------------------------------------------------------------------
+#####################################################################################################
+# - libclang ----------------------------------------------------------------------------------------
 
-# # XXX - Waiting on PR https://github.com/rapidsai/cudf/pull/7107 before this can be added
-# function(find_and_configure_cudf VERSION)
+# CPMAddPackage(
+#   NAME clang
+#   GIT_REPOSITORY  https://github.com/llvm/llvm-project.git
+#   GIT_TAG         llvmorg-11.1.0
+#   GIT_SHALLOW     TRUE
+#   # SOURCE_SUBDIR   clang
+#   # OPTIONS         "BUILD_TESTS OFF"
+#   #                 "BUILD_BENCHMARKS OFF"
+#   #                 "ARROW_STATIC_LIB ON"
+#   #                 "JITIFY_USE_CACHE ON"
+#   #                 "CUDA_STATIC_RUNTIME ON"
+#   #                 "DISABLE_DEPRECATION_WARNING ON"
+# )
 
-#     CPMAddPackage(NAME  cudf
-#         VERSION         ${VERSION}
-#         #GIT_REPOSITORY  https://github.com/rapidsai/cudf.git
-#         #GIT_TAG         branch-0.19-latest
-#         GIT_REPOSITORY  https://github.com/trxcllnt/cudf.git
-#         GIT_TAG         fix/cmake-exports
-#         GIT_SHALLOW     TRUE
-#         SOURCE_SUBDIR   cpp
-#         OPTIONS         "BUILD_TESTS OFF"
-#                         "BUILD_BENCHMARKS OFF"
-#                         "ARROW_STATIC_LIB ON"
-#                         "JITIFY_USE_CACHE ON"
-#                         "CUDA_STATIC_RUNTIME ON"
-#                         "DISABLE_DEPRECATION_WARNING ON"
-#                         "AUTO_DETECT_CUDA_ARCHITECTURES ON"
-#     )
+####################################################################################################
+# - cudf -------------------------------------------------------------------------------------------
 
-# endfunction()
+# XXX - Waiting on PR https://github.com/rapidsai/cudf/pull/7107 before this can be added
+function(find_and_configure_cudf VERSION)
 
-# find_and_configure_cudf("0.19.0")
+    CPMAddPackage(NAME  cudf
+        VERSION         ${VERSION}
+        #GIT_REPOSITORY  https://github.com/rapidsai/cudf.git
+        #GIT_TAG         branch-0.19-latest
+        GIT_REPOSITORY  https://github.com/trxcllnt/cudf.git
+        GIT_TAG         fix/cmake-exports
+        GIT_SHALLOW     TRUE
+        SOURCE_SUBDIR   cpp
+        OPTIONS         "BUILD_TESTS OFF"
+                        "BUILD_BENCHMARKS OFF"
+                        "ARROW_STATIC_LIB ON"
+                        "JITIFY_USE_CACHE ON"
+                        "CUDA_STATIC_RUNTIME ON"
+                        "DISABLE_DEPRECATION_WARNING ON"
+                        "AUTO_DETECT_CUDA_ARCHITECTURES ON"
+    )
 
-# add_target(${PROJECT_NAME} SHARED "${src_files}")
-# target_link_libraries(${PROJECT_NAME} rmm::rmm cudf::cudf)
+endfunction()
+
+find_and_configure_cudf("0.19.0")
+
+add_executable(test "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp")
+target_link_libraries(test rmm::rmm cudf::cudf)
 
 ######################################################################################################
 # - shareable_dataframes -----------------------------------------------------------------------------
@@ -144,11 +161,14 @@ if(BUILD_SHAREABLE_DATAFRAME)
   # XXX - Remove this hardcoded path evilness, only needed right now since CPM is not complete.
   target_link_directories(shareable_dataframe PRIVATE "/home/jdyer/anaconda3/envs/cudf_dev/lib")
   target_link_libraries(shareable_dataframe
-                        rmm
-                        cudf
+                        rmm::rmm
+                        cudf::cudf
                         dl
                         cuda
-                        nvrtc)
+                        nvrtc
+                        # clang
+                        cxxopts
+                        spdlog)
 
 endif()
 
