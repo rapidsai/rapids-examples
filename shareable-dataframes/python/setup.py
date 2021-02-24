@@ -26,40 +26,6 @@ cuda_lib_dir = os.path.join(CUDA_HOME, "lib64")
 print("CUDA Include Dir: " + cuda_include_dir)
 print("CUDA Library Dir: " + cuda_lib_dir)
 
-
-# Include the ability to compile using both GCC and NVCC
-def compile_cuda(self):
-    self.src_extensions.append(".cu")
-    default_so = self.compiler_so
-    super = self._compile
-
-    # Adjust the _compile method.
-    def _compile(obj, src, ext, cc_args, extra_args, pp_opts):
-        if os.path.splitext(src)[1] == ".cu":
-            # cude source file, lets compile it accordingly
-            self.set_executable(
-                "compiler_so",
-                os.path.join(os.path.join(CUDA_HOME, "bin"), "nvcc"),
-            )
-            postargs = extra_args["nvcc"]
-        else:
-            postargs = extra_args["gcc"]
-
-        super(obj, src, ext, cc_args, postargs, pp_opts)
-
-        # Reset defaults
-        self.compiler_so = default_so
-
-    self._compile = _compile
-
-
-# Stub for custom compiler
-class custom_build_ext(build_ext):
-    def build_extensions(self):
-        compile_cuda(self.compiler)
-        build_ext.build_extensions(self)
-
-
 try:
     numpy_include = numpy.get_include()
 except AttributeError:
@@ -68,30 +34,22 @@ except AttributeError:
 
 ext = Extension(
     "cudfkernel",
-    sources=["src/kernel_wrapper.cu", "kernel.pyx"],
+    sources=["kernel.pyx"],
     library_dirs=[
         cuda_lib_dir,
         get_python_lib(),
         os.path.join(os.sys.prefix, "lib"),
+        "/test/cpp/build"
     ],
-    libraries=["cudf", "cudart"],
+    libraries=["cudf", "cudart", "shareable_dataframe"],
     language="c++",
-    runtime_library_dirs=[cuda_lib_dir],
+    runtime_library_dirs=[cuda_lib_dir, "/test/cpp/build"],
     include_dirs=[
         os.path.dirname(sysconfig.get_path("include")),
         numpy_include,
         cuda_include_dir,
-        "src",
-        # "../../thirdparty/_deps/libcudacxx-src/include",
-        # "../../thirdparty/_deps/libcudacxx-src/libcxx/include",
-        # "../../thirdparty/_deps/thrust-src/thrust",
-        # "../../thirdparty/_deps/thrust-src/thrust/cub",
-        # "../../thirdparty/_deps/jitify-src",
+        "/test/cpp/include"
     ],
-    extra_compile_args={
-        "gcc": [],
-        "nvcc": ["--ptxas-options=-v", "--expt-extended-lambda", "--expt-relaxed-constexpr", "-c", "--compiler-options", "'-fPIC'"],
-    },
 )
 
 setup(
@@ -109,6 +67,5 @@ setup(
     ],
     ext_modules=[ext],
     packages=find_packages(include=["cudf", "cudf.*"]),
-    cmdclass={"build_ext": custom_build_ext},
     zip_safe=False,
 )

@@ -1,3 +1,21 @@
+/*
+ * Copyright (c) 2021, NVIDIA CORPORATION.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#pragma once
+
 #include <stdio.h>
 #include <cudf/column/column_device_view.cuh>
 #include <cudf/table/table_device_view.cuh>
@@ -8,25 +26,6 @@ __global__ void kernel_tenth_mm_to_inches(cudf::mutable_column_device_view colum
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < column.size()) {
-        column.element<int64_t>(i) = column.element<int64_t>(i) * (1/10) * mm_to_inches;
+        column.element<souble>(i) = column.element<int64_t>(i) * (1/10) * mm_to_inches;
     }
 }
-
-// __global__ void kernel_tenth_mm_to_inches_table(cudf::mutable_table_device_view tbl, int column_index)
-// {
-//     int i = blockIdx.x * blockDim.x + threadIdx.x;
-//     if (i < tbl.num_rows()) {
-//         cudf::mutable_column_device_view column = tbl.column(column_index);
-//         column.element<int64_t>(i) = column.element<int64_t>(i) * (1/10) * mm_to_inches;
-//     }
-// }
-
-// __global__ void kernel_tenth_mm_to_inches_in_and_out(cudf::table_device_view in_tbl, cudf::mutable_table_device_view out_tbl, int column_index)
-// {
-//     int i = blockIdx.x * blockDim.x + threadIdx.x;
-//     if (i < in_tbl.num_rows()) {
-//         cudf::mutable_column_device_view column = in_tbl.column(column_index);
-//         cudf::mutable_column_device_view column out_col = out_tbl.column(0);
-//         out_column.element<int64_t>(i) = column.element<int64_t>(i) * (1/10) * mm_to_inches;
-//     }
-// }

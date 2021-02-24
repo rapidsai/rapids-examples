@@ -72,10 +72,10 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/" ${CMAKE_MODUL
 ####################################################################################################
 # - SPDLOG -----------------------------------------------------------------------------------------
 
-# CPMAddPackage(
-#     NAME spdlog
-#     GITHUB_REPOSITORY gabime/spdlog
-#     VERSION 1.7.0)
+CPMAddPackage(
+    NAME spdlog
+    GITHUB_REPOSITORY gabime/spdlog
+    VERSION 1.7.0)
 
 ####################################################################################################
 # - cxxopts ----------------------------------------------------------------------------------------
@@ -131,10 +131,11 @@ function(find_and_configure_cudf VERSION)
 
 endfunction()
 
-find_and_configure_cudf("0.19.0")
+#####################################################################################################
+# - Create the `examples` executable ----------------------------------------------------------------
 
-add_executable(test "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp")
-target_link_libraries(test rmm::rmm cudf::cudf)
+find_and_configure_cudf("0.19.0")
+add_executable(examples "${CMAKE_CURRENT_SOURCE_DIR}/src/examples.cpp")
 
 ######################################################################################################
 # - shareable_dataframes -----------------------------------------------------------------------------
@@ -142,33 +143,21 @@ target_link_libraries(test rmm::rmm cudf::cudf)
 if(BUILD_SHAREABLE_DATAFRAME)
   message(STATUS "Building ${BUILD_SHAREABLE_DATAFRAME} example")
 
-  # XXX - Understand if RMM will be included as part of the upcoming CPMAddPackage work for CUDF? If not will need to hack a way to add that here ourselves. Hopefully it is however.
-  add_executable(shareable_dataframe "${CMAKE_CURRENT_SOURCE_DIR}/src/kernel.cu"
-                                     "${CMAKE_CURRENT_SOURCE_DIR}/src/kernel_wrapper.cu"
-                             )
+  # Create the `shareable_dataframe` shared object
+  add_library(shareable_dataframe "src/kernel_wrapper.cu")
 
-  # XXX - Do not hardcode these values!!!!
-  set_property(TARGET shareable_dataframe PROPERTY CUDA_ARCHITECTURES 72)
-
-  # XXX - Remove this hardcoded path evilness, only needed right now since CPM is not complete.
   target_include_directories(shareable_dataframe PRIVATE 
                             "${CMAKE_CURRENT_SOURCE_DIR}/include"
-                            "${CMAKE_CURRENT_SOURCE_DIR}/src"
-                            "/home/jdyer/anaconda3/envs/cudf_dev/include"
-                            "/home/jdyer/anaconda3/envs/cudf_dev/include/libcudf/libcudacxx"
-                            "/home/jdyer/Development/cudf/thirdparty/jitify")
+                            )
 
-  # XXX - Remove this hardcoded path evilness, only needed right now since CPM is not complete.
-  target_link_directories(shareable_dataframe PRIVATE "/home/jdyer/anaconda3/envs/cudf_dev/lib")
   target_link_libraries(shareable_dataframe
                         rmm::rmm
                         cudf::cudf
-                        dl
-                        cuda
-                        nvrtc
-                        # clang
                         cxxopts
-                        spdlog)
+                        spdlog
+                        )
+
+  target_link_libraries(examples shareable_dataframe)
 
 endif()
 
@@ -184,12 +173,3 @@ link_directories("${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES}" # CMAKE_CUDA_IMPLICIT
 if(CONDA_LINK_DIRS)
     link_directories("${CONDA_LINK_DIRS}")
 endif(CONDA_LINK_DIRS)
-
-# ###################################################################################################
-# # - library targets -------------------------------------------------------------------------------
-# add_library(kernel "src/kernel.cu" "src/kernel_wrapper.cu")
-
-# # ###################################################################################################
-# # # - link libraries --------------------------------------------------------------------------------
-
-# # target_link_libraries("${CUDF_PROXY_NAME}" "${CUDF_NAMESPACE}::${CUDF_BASE_NAME}" "${CUDF_MODULES}")
