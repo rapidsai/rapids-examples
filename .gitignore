@@ -1,0 +1,16 @@
+sharable-dataframes/cython/*.cpp
+sharable-dataframes/cython/*.so
+sharable-dataframes/cython/record.txt
+
+# CPP build
+sharable-dataframes/cpp/build
+
+# Ignore Cython generated files
+sharable-dataframes/python/kernel.cpp
+
+# Ignore data files download by the script
+sharable-dataframes/data/weather
+
+.cache
+
+build
