@@ -62,59 +62,14 @@ message(STATUS "CUDA_VERSION: ${CUDA_VERSION}")
 set(CUDA_VERSION_STRING "${CUDA_VERSION}")
 
 # For now lets keep it simple and only compile CUDA code for specific architectures
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -w --expt-extended-lambda --expt-relaxed-constexpr -gencode arch=compute_70,code=sm_70")
-
-###################################################################################################
-# - cmake modules ---------------------------------------------------------------------------------
-
-set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/" ${CMAKE_MODULE_PATH})
-
-####################################################################################################
-# - SPDLOG -----------------------------------------------------------------------------------------
-
-CPMAddPackage(
-    NAME spdlog
-    GITHUB_REPOSITORY gabime/spdlog
-    VERSION 1.7.0)
-
-####################################################################################################
-# - cxxopts ----------------------------------------------------------------------------------------
-
-CPMAddPackage(
-  NAME cxxopts
-  GITHUB_REPOSITORY jarro2783/cxxopts
-  VERSION 2.2.0
-  OPTIONS
-    "CXXOPTS_BUILD_EXAMPLES Off"
-    "CXXOPTS_BUILD_TESTS Off"
-)
-
-#####################################################################################################
-# - libclang ----------------------------------------------------------------------------------------
-
-# CPMAddPackage(
-#   NAME clang
-#   GIT_REPOSITORY  https://github.com/llvm/llvm-project.git
-#   GIT_TAG         llvmorg-11.1.0
-#   GIT_SHALLOW     TRUE
-#   # SOURCE_SUBDIR   clang
-#   # OPTIONS         "BUILD_TESTS OFF"
-#   #                 "BUILD_BENCHMARKS OFF"
-#   #                 "ARROW_STATIC_LIB ON"
-#   #                 "JITIFY_USE_CACHE ON"
-#   #                 "CUDA_STATIC_RUNTIME ON"
-#   #                 "DISABLE_DEPRECATION_WARNING ON"
-# )
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -w --expt-extended-lambda --expt-relaxed-constexpr -gencode arch=compute_72,code=sm_72")
 
 ####################################################################################################
 # - cudf -------------------------------------------------------------------------------------------
 
-# XXX - Waiting on PR https://github.com/rapidsai/cudf/pull/7107 before this can be added
-function(find_and_configure_cudf VERSION)
-
-    CPMAddPackage(NAME  cudf
-        VERSION         ${VERSION}
-        #GIT_REPOSITORY  https://github.com/rapidsai/cudf.git
+CPMAddPackage(NAME  cudf
+        VERSION         "0.19.0"
+        #GIT_REPOSITORY  https://github.com/rapidsai/cudf.git # Once PR is merged use this instead of branch
         #GIT_TAG         branch-0.19-latest
         GIT_REPOSITORY  https://github.com/trxcllnt/cudf.git
         GIT_TAG         fix/cmake-exports
@@ -128,14 +83,6 @@ function(find_and_configure_cudf VERSION)
                         "DISABLE_DEPRECATION_WARNING ON"
                         "AUTO_DETECT_CUDA_ARCHITECTURES ON"
     )
-
-endfunction()
-
-#####################################################################################################
-# - Create the `examples` executable ----------------------------------------------------------------
-
-find_and_configure_cudf("0.19.0")
-add_executable(examples "${CMAKE_CURRENT_SOURCE_DIR}/src/examples.cpp")
 
 ######################################################################################################
 # - shareable_dataframes -----------------------------------------------------------------------------
@@ -153,12 +100,7 @@ if(BUILD_SHAREABLE_DATAFRAME)
   target_link_libraries(shareable_dataframe
                         rmm::rmm
                         cudf::cudf
-                        cxxopts
-                        spdlog
                         )
-
-  target_link_libraries(examples shareable_dataframe)
-
 endif()
 
 

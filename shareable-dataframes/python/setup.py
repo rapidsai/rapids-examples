@@ -39,7 +39,6 @@ ext = Extension(
         cuda_lib_dir,
         get_python_lib(),
         os.path.join(os.sys.prefix, "lib"),
-        "/test/cpp/build"
     ],
     libraries=["cudf", "cudart", "shareable_dataframe"],
     language="c++",
@@ -48,7 +47,6 @@ ext = Extension(
         os.path.dirname(sysconfig.get_path("include")),
         numpy_include,
         cuda_include_dir,
-        "/test/cpp/include"
     ],
 )
 
