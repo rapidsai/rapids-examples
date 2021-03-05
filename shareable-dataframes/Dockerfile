@@ -51,9 +51,6 @@ RUN wget \
     && rm -f Miniconda3-latest-Linux-x86_64.sh \
     && conda init bash
 
-# Create shareable_dataframes conda environment
-RUN conda env create -f /rapids/rapids-examples/shareable-dataframes/conda/shareable_dataframes.yml --name shareable_dataframes
-
 # Install CMake
 RUN cd /tmp \
  && curl -fsSLO --compressed "https://github.com/Kitware/CMake/releases/download/v$CMAKE_VERSION/cmake-$CMAKE_VERSION.tar.gz" -o /tmp/cmake-$CMAKE_VERSION.tar.gz \
@@ -67,6 +64,9 @@ RUN cd /tmp \
 # checkout the repo inside the container making it more portable
 RUN mkdir -p /rapids \
  && git clone https://github.com/jdye64/rapids-examples.git /rapids/rapids-examples
+
+# Create shareable_dataframes conda environment
+RUN conda env create -f /rapids/rapids-examples/shareable-dataframes/conda/shareable_dataframes.yml --name shareable_dataframes
 
 # Configure
 RUN cmake \
