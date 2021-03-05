@@ -25,12 +25,13 @@ cuda_lib_dir = os.path.join(CUDA_HOME, "lib64")
 
 print("CUDA Include Dir: " + cuda_include_dir)
 print("CUDA Library Dir: " + cuda_lib_dir)
+print("OS System Lib Path: " + str(os.path.join(os.sys.prefix, "lib")))
+print("OS System Include Path: " + str(os.path.dirname(sysconfig.get_path("include"))))
 
 try:
     numpy_include = numpy.get_include()
 except AttributeError:
     numpy_include = numpy.get_numpy_include()
-
 
 ext = Extension(
     "cudfkernel",
@@ -39,14 +40,16 @@ ext = Extension(
         cuda_lib_dir,
         get_python_lib(),
         os.path.join(os.sys.prefix, "lib"),
+        "/usr/local/lib",
     ],
     libraries=["cudf", "cudart", "shareable_dataframe"],
     language="c++",
-    runtime_library_dirs=[cuda_lib_dir, "/test/cpp/build"],
+    runtime_library_dirs=[cuda_lib_dir, os.path.join(os.sys.prefix, "lib"), "/usr/local/lib"],
     include_dirs=[
         os.path.dirname(sysconfig.get_path("include")),
         numpy_include,
         cuda_include_dir,
+        "../cpp/include",
     ],
 )
 

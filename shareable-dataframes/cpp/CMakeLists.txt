@@ -69,10 +69,8 @@ set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -w --expt-extended-lambda --expt-relax
 
 CPMAddPackage(NAME  cudf
         VERSION         "0.19.0"
-        #GIT_REPOSITORY  https://github.com/rapidsai/cudf.git # Once PR is merged use this instead of branch
-        #GIT_TAG         branch-0.19-latest
-        GIT_REPOSITORY  https://github.com/trxcllnt/cudf.git
-        GIT_TAG         fix/cmake-exports
+        GIT_REPOSITORY  https://github.com/rapidsai/cudf.git
+        GIT_TAG         branch-0.19
         GIT_SHALLOW     TRUE
         SOURCE_SUBDIR   cpp
         OPTIONS         "BUILD_TESTS OFF"
@@ -98,7 +96,6 @@ if(BUILD_SHAREABLE_DATAFRAME)
                             )
 
   target_link_libraries(shareable_dataframe
-                        rmm::rmm
                         cudf::cudf
                         )
 endif()
@@ -115,3 +112,22 @@ link_directories("${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES}" # CMAKE_CUDA_IMPLICIT
 if(CONDA_LINK_DIRS)
     link_directories("${CONDA_LINK_DIRS}")
 endif(CONDA_LINK_DIRS)
+
+###################################################################################################
+# - install targets -------------------------------------------------------------------------------
+
+include(GNUInstallDirs)
+
+set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/shareable-dataframes)
+set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME shareable-dataframes)
+
+# install target for shareable_dataframes
+install(TARGETS shareable_dataframe
+        DESTINATION lib
+        EXPORT shareable_dataframes-targets)
+
+install(DIRECTORY
+            ${CUDF_SOURCE_DIR}/include
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+include(CMakePackageConfigHelpers)

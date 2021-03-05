@@ -13,4 +13,5 @@ dependencies:
   - python>=3.6,<3.8
   - cython>=0.29,<0.30
   - cudatoolkit=11.0
+  - numpy
   
