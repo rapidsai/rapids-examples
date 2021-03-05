@@ -43,9 +43,6 @@ CUDA_VERSION_MINOR=$(echo $CUDA_VERSION | tr -d '.' | cut -c 3); \
 
 ARG CMAKE_VERSION=3.18.5
 
-# # Alias for python->python3.8
-# RUN echo 'alias python="python3.8"' >> ~/.bashrc
-
 # Install miniconda
 RUN wget \
     https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
@@ -53,6 +50,9 @@ RUN wget \
     && bash Miniconda3-latest-Linux-x86_64.sh -b \
     && rm -f Miniconda3-latest-Linux-x86_64.sh \
     && conda init bash
+
+# Create shareable_dataframes conda environment
+RUN conda env create -f /rapids/rapids-examples/shareable-dataframes/conda/shareable_dataframes.yml --name shareable_dataframes
 
 # Install CMake
 RUN cd /tmp \
