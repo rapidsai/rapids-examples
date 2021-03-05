@@ -12,23 +12,20 @@ The example CUDA kernel accepts a data column (PRCP) containing rainfall values 
 
 This is similar to an existing [weather notebook](https://github.com/rapidsai/notebooks-contrib/blob/branch-0.19/intermediate_notebooks/examples/weather.ipynb), which provides a reference for understanding the implementation. 
 
-## Building
+## Building (Inside Docker container)
 
-1. Clone the `rapids-examples` repo if you haven't already 
-    - ```git clone https://github.com/rapidsai/rapids-examples.git```
-    - ```cd rapids-examples/shareable-dataframes```
-2. Compile C++ `kernel_wrapper` code and CUDA kernels
-    - ```cd cpp && mkdir build && cd build```
-    - ```cmake ..```
-    - ```make```
-3. Create the `shareable_dataframes` conda environment for the python code. 
-    - ```conda env create -f ./conda/shareable_dataframes.yml --name shareable_dataframes```
-4. Activate the `shareable_dataframes` conda environment ```conda activate shareable_dataframes```
-5. Build the cython kernel_wrapper code, this will also link against the previously compiled C++ code. 
-    - ```cd python && python setup.py build install``` 
-6. Download weather data. A convenience Python script has been provided here to make that easier for you. By default it will download years 2010-2020 weather data. That data is about 300MB per file so if you need to download less files you can change that in the script. The data will be downloaded to ./data/weather.
-    - ```python ./data/download_data.py```
-7. Run the Python example script. It expects an input of a single Weather year file.    - EX: ```python ./python/python_kernel_wrapper.py ./data/weather/2010.csv.gz```
+1. Compile C++ `kernel_wrapper` code and CUDA kernels
+    - ```cmake -DBUILD_TESTS=OFF -DBUILD_BENCHMARKS=OFF -DCMAKE_CUDA_ARCHITECTURES= -S /rapids/rapids-examples/shareable-dataframes/cpp -B /rapids/rapids-examples/shareable-dataframes/cpp/build```
+    - ```cmake --build /rapids/rapids-examples/shareable-dataframes/cpp/build -j${PARALLEL_LEVEL} -v```
+    - ```cmake --install /rapids/rapids-examples/shareable-dataframes/cpp/build -v```
+2. Create the `shareable_dataframes` conda environment for the python code. 
+    - ```conda env create -f /rapids/rapids-examples/shareable-dataframes/conda/shareable_dataframes.yml --name shareable_dataframes```
+3. Activate the `shareable_dataframes` conda environment ```conda activate shareable_dataframes```
+4. Build the cython kernel_wrapper code, this will also link against the previously compiled C++ code. 
+    - ```cd /rapids/rapids-examples/shareable-dataframes/python && python setup.py build install``` 
+5. Download weather data. A convenience Python script has been provided here to make that easier for you. By default it will download years 2010-2020 weather data. That data is about 300MB per file so if you need to download less files you can change that in the script. The data will be downloaded to ./data/weather.
+    - ```python /rapids/rapids-examples/shareable-dataframes/data/download_data.py```
+6. Run the Python example script. It expects an input of a single Weather year file. - EX: ```python /rapids/rapids-examples/shareable-dataframes/python/python_kernel_wrapper.py /rapids/rapids-examples/shareable-dataframes/python/data/weather/2010.csv.gz```
 
 CUDA Kernel with existing business logic:
 ``` cpp
