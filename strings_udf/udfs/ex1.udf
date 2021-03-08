@@ -1,0 +1,14 @@
+
+__global__ void udf( dstring_view* d_in_strs, dstring* d_out_strs, int count )
+{
+    int tid = (blockDim.x * blockIdx.x) + threadIdx.x;
+    if( tid < count )
+    {
+        dstring str = d_in_strs[tid];
+        if( starts_with(str,"a") )
+            str = str.insert(0,"+");
+        if( str.length() > 10 )
+            str = str.substr(0,10);
+        d_out_strs[tid] = str;
+    }
+}

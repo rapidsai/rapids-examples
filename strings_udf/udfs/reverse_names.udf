@@ -1,0 +1,36 @@
+
+//
+// Example text file for this:
+//    First Last
+//    George Washington
+//    James Madison
+//    Thomas Jefferson
+//    Abraham Lincoln
+//    John Adams
+//    Benjamin Franklin
+//
+// Output is:
+//    Last, First
+//    Washington, George
+//    Madison, James
+//    Jefferson, Thomas
+//    Lincoln, Abraham
+//    Adams, John
+//    Franklin, Benjamin
+//
+
+__global__ void udf( dstring_view* d_in_strs, dstring* d_out_strs, int count )
+{
+    int tid = (blockDim.x * blockIdx.x) + threadIdx.x;
+    if( tid < count )
+    {
+        dstring str = d_in_strs[tid];
+        dstring names[2];
+        str.split( " ", 2, names );
+        dstring_view rev_names[2];
+        rev_names[0] = names[1];
+        rev_names[1] = names[0];
+        dstring out(", ",2);
+        d_out_strs[tid] = out.join(rev_names,2);
+    }
+}
