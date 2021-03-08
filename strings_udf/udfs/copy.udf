@@ -1,0 +1,9 @@
+
+__global__ void udf( dstring_view* d_in_strs, dstring* d_out_strs, int count )
+{
+    int tid = (blockDim.x * blockIdx.x) + threadIdx.x;
+    if( tid < count )
+    {
+        d_out_strs[tid] = d_in_strs[tid];
+    }
+}
