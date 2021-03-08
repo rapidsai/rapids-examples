@@ -51,7 +51,7 @@ RUN cd /tmp \
 
 # checkout the repo inside the container making it more portable
 RUN mkdir -p /rapids \
- && git clone https://github.com/jdye64/rapids-examples.git /rapids/rapids-examples
+ && git clone https://github.com/rapidsai/rapids-examples.git /rapids/rapids-examples
 
 # Configure
 RUN cmake \
