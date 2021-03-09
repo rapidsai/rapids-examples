@@ -12,5 +12,6 @@ sharable-dataframes/python/kernel.cpp
 sharable-dataframes/data/weather
 
 .cache
+.vscode
 
 build

@@ -89,7 +89,7 @@ if(BUILD_STRINGS_UDF)
 
   message(STATUS "Building 'strings_udf' example")
 
-  add_executable(strings_udf "${CMAKE_CURRENT_SOURCE_DIR}/src/nvs_udf.cu" "${CMAKE_CURRENT_SOURCE_DIR}/src/dstring.cu")
+  add_executable(strings_udf "${CMAKE_CURRENT_SOURCE_DIR}/src/nvs_udf.cu")
 
   target_include_directories(strings_udf PRIVATE 
                             "${CMAKE_CURRENT_SOURCE_DIR}/include")
