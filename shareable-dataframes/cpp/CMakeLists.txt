@@ -10,6 +10,31 @@ endif(NOT CMAKE_CUDA_COMPILER)
 option(BUILD_SHAREABLE_DATAFRAME "Build the strings_udf project" ON)
 set(SHAREABLE_DATAFRAME "shareable-dataframes")
 
+###################################################################################################
+# - conda environment -----------------------------------------------------------------------------
+
+if("$ENV{CONDA_BUILD}" STREQUAL "1")
+    set(CMAKE_PREFIX_PATH "$ENV{BUILD_PREFIX};$ENV{PREFIX};${CMAKE_PREFIX_PATH}")
+    set(CONDA_INCLUDE_DIRS "$ENV{BUILD_PREFIX}/include" "$ENV{PREFIX}/include")
+    set(CONDA_LINK_DIRS "$ENV{BUILD_PREFIX}/lib" "$ENV{PREFIX}/lib")
+    message(VERBOSE "CUDF: Conda build detected, CMAKE_PREFIX_PATH set to: ${CMAKE_PREFIX_PATH}")
+elseif(DEFINED ENV{CONDA_PREFIX})
+    set(CMAKE_PREFIX_PATH "$ENV{CONDA_PREFIX};${CMAKE_PREFIX_PATH}")
+    set(CONDA_INCLUDE_DIRS "$ENV{CONDA_PREFIX}/include")
+    set(CONDA_LINK_DIRS "$ENV{CONDA_PREFIX}/lib")
+    message(VERBOSE "CUDF: Conda environment detected, CMAKE_PREFIX_PATH set to: ${CMAKE_PREFIX_PATH}")
+endif()
+
+# Add Conda library paths if specified
+if(CONDA_LINK_DIRS)
+    target_link_directories(shareable_dataframe PUBLIC "$<BUILD_INTERFACE:${CONDA_LINK_DIRS}>")
+endif()
+
+# Add Conda include paths if specified
+if(CONDA_INCLUDE_DIRS)
+    target_include_directories(shareable_dataframe PUBLIC "$<BUILD_INTERFACE:${CONDA_INCLUDE_DIRS}>")
+endif()
+
 #################################################################################################
 # - CPM -----------------------------------------------------------------------------------------
 
@@ -67,8 +92,8 @@ set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -w --expt-extended-lambda --expt-relax
 ####################################################################################################
 # - cudf -------------------------------------------------------------------------------------------
 
-CPMAddPackage(NAME  cudf
-        VERSION         "0.19.0"
+CPMFindPackage(NAME  cudf
+        VERSION         "0.19"
         GIT_REPOSITORY  https://github.com/rapidsai/cudf.git
         GIT_TAG         branch-0.19
         GIT_SHALLOW     TRUE
