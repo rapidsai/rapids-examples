@@ -25,16 +25,6 @@ elseif(DEFINED ENV{CONDA_PREFIX})
     message(VERBOSE "CUDF: Conda environment detected, CMAKE_PREFIX_PATH set to: ${CMAKE_PREFIX_PATH}")
 endif()
 
-# Add Conda library paths if specified
-if(CONDA_LINK_DIRS)
-    target_link_directories(shareable_dataframe PUBLIC "$<BUILD_INTERFACE:${CONDA_LINK_DIRS}>")
-endif()
-
-# Add Conda include paths if specified
-if(CONDA_INCLUDE_DIRS)
-    target_include_directories(shareable_dataframe PUBLIC "$<BUILD_INTERFACE:${CONDA_INCLUDE_DIRS}>")
-endif()
-
 #################################################################################################
 # - CPM -----------------------------------------------------------------------------------------
 
@@ -123,6 +113,17 @@ if(BUILD_SHAREABLE_DATAFRAME)
   target_link_libraries(shareable_dataframe
                         cudf::cudf
                         )
+
+  # Add Conda library paths if specified
+  if(CONDA_LINK_DIRS)
+    target_link_directories(shareable_dataframe PUBLIC "$<BUILD_INTERFACE:${CONDA_LINK_DIRS}>")
+  endif()
+
+  # Add Conda include paths if specified
+  if(CONDA_INCLUDE_DIRS)
+    target_include_directories(shareable_dataframe PUBLIC "$<BUILD_INTERFACE:${CONDA_INCLUDE_DIRS}>")
+  endif()
+  
 endif()
 
 
