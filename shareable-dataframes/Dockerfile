@@ -23,7 +23,6 @@ CUDA_VERSION_MINOR=$(echo $CUDA_VERSION | tr -d '.' | cut -c 3); \
 && apt install -y software-properties-common \
 && add-apt-repository -y ppa:git-core/ppa \
 && add-apt-repository -y ppa:ubuntu-toolchain-r/test \
-&& add-apt-repository ppa:deadsnakes/ppa \
 && apt update -y \
 && apt install -y \
    build-essential git wget \
@@ -32,8 +31,6 @@ CUDA_VERSION_MINOR=$(echo $CUDA_VERSION | tr -d '.' | cut -c 3); \
    curl libssl-dev libcurl4-openssl-dev zlib1g-dev \
    # cuDF dependencies
    libboost-filesystem-dev \
-   # # Install Python 3.8
-   # python3.8 \
 && apt autoremove -y \
 && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
 && update-alternatives \
@@ -46,9 +43,12 @@ ARG CMAKE_VERSION=3.18.5
 # Install miniconda
 RUN wget \
     https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
-    && mkdir /root/.conda \
-    && bash Miniconda3-latest-Linux-x86_64.sh -b \
+    && bash Miniconda3-latest-Linux-x86_64.sh -b -p /conda \
     && rm -f Miniconda3-latest-Linux-x86_64.sh 
+
+ENV PATH=${PATH}:/conda/bin
+# Enables "source activate conda"
+SHELL ["/bin/bash", "-c"]
 
 # checkout the repo inside the container making it more portable
 RUN mkdir -p /rapids \
@@ -59,25 +59,26 @@ RUN mkdir -p /rapids \
 # Create shareable_dataframes conda environment
 RUN conda env create -f /rapids/rapids-examples/shareable-dataframes/conda/shareable_dataframes.yml --name shareable_dataframes
 
-# Make all RUN commands run in the context of the `shareable_dataframes` conda environment
-SHELL ["conda", "run", "-n", "shareable_dataframes", "/bin/bash", "-c"]
+# # Make all RUN commands run in the context of the `shareable_dataframes` conda environment
+# SHELL ["conda", "run", "-n", "shareable_dataframes", "/bin/bash", "-c"]
 
 # Configure
-RUN cmake \
+RUN source activate shareable_dataframes \
+    && cmake \
     -DBUILD_TESTS=OFF \
     -DBUILD_BENCHMARKS=OFF \
     -DCMAKE_CUDA_ARCHITECTURES= \
     -S /rapids/rapids-examples/shareable-dataframes/cpp \
     -B /rapids/rapids-examples/shareable-dataframes/cpp/build
 
-# Build
-RUN cmake --build /rapids/rapids-examples/shareable-dataframes/cpp/build -j${PARALLEL_LEVEL} -v
+# # Build
+# RUN cmake --build /rapids/rapids-examples/shareable-dataframes/cpp/build -j${PARALLEL_LEVEL} -v
 
-# Install (default install to `/usr/local/{include|lib}` prefix)
-RUN cmake --install /rapids/rapids-examples/shareable-dataframes/cpp/build -v
+# # Install (default install to `/usr/local/{include|lib}` prefix)
+# RUN cmake --install /rapids/rapids-examples/shareable-dataframes/cpp/build -v
 
-# Since the default install location is /usr/local/lib. Lets copy to the anaconda env to make things easier for Python development
-RUN cp /usr/local/lib/libshareable_dataframe.so /root/miniconda3/envs/shareable_dataframes/lib/.
+# # Since the default install location is /usr/local/lib. Lets copy to the anaconda env to make things easier for Python development
+# RUN cp /usr/local/lib/libshareable_dataframe.so /root/miniconda3/envs/shareable_dataframes/lib/.
 
 SHELL ["/bin/bash", "-l"]
 CMD ["/bin/bash", "-l"]

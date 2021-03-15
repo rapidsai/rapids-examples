@@ -83,7 +83,7 @@ set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -w --expt-extended-lambda --expt-relax
 # - cudf -------------------------------------------------------------------------------------------
 
 CPMFindPackage(NAME  cudf
-        VERSION         "0.19"
+        VERSION         "0.19.0"
         GIT_REPOSITORY  https://github.com/rapidsai/cudf.git
         GIT_TAG         branch-0.19
         GIT_SHALLOW     TRUE
@@ -123,7 +123,7 @@ if(BUILD_SHAREABLE_DATAFRAME)
   if(CONDA_INCLUDE_DIRS)
     target_include_directories(shareable_dataframe PUBLIC "$<BUILD_INTERFACE:${CONDA_INCLUDE_DIRS}>")
   endif()
-  
+
 endif()
 
 
@@ -134,10 +134,6 @@ endif()
 link_directories("${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES}" # CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES is an undocumented/unsupported variable containing the link directories for nvcc
                  "${CMAKE_BINARY_DIR}/lib"
                  "${CMAKE_BINARY_DIR}")
-
-if(CONDA_LINK_DIRS)
-    link_directories("${CONDA_LINK_DIRS}")
-endif(CONDA_LINK_DIRS)
 
 ###################################################################################################
 # - install targets -------------------------------------------------------------------------------
