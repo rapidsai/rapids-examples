@@ -1,3 +1,11 @@
 {
+    "files.associations": {
+        "*.cu": "cpp",
+        "*.cuh": "cpp",
+        "*.jit": "cpp"
+    },
+    "C_Cpp.autoAddFileAssociations": false,
+    "C_Cpp.configurationWarnings": "Disabled",
+    "C_Cpp.vcpkg.enabled": false,
     "cmake.sourceDirectory": "${workspaceFolder}/shareable-dataframes/cpp"
 }
