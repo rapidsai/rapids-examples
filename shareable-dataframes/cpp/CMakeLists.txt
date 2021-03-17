@@ -92,7 +92,7 @@ CPMFindPackage(NAME  cudf
                         "BUILD_BENCHMARKS OFF"
                         "ARROW_STATIC_LIB ON"
                         "JITIFY_USE_CACHE ON"
-                        "CUDA_STATIC_RUNTIME ON"
+                        "CUDA_STATIC_RUNTIME OFF"
                         "DISABLE_DEPRECATION_WARNING ON"
                         "AUTO_DETECT_CUDA_ARCHITECTURES ON"
     )
