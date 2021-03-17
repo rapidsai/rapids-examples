@@ -82,20 +82,20 @@ set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -w --expt-extended-lambda --expt-relax
 ####################################################################################################
 # - cudf -------------------------------------------------------------------------------------------
 
-# CPMFindPackage(NAME  cudf
-#         VERSION         "0.19.0"
-#         GIT_REPOSITORY  https://github.com/rapidsai/cudf.git
-#         GIT_TAG         branch-0.19
-#         GIT_SHALLOW     TRUE
-#         SOURCE_SUBDIR   cpp
-#         OPTIONS         "BUILD_TESTS OFF"
-#                         "BUILD_BENCHMARKS OFF"
-#                         "ARROW_STATIC_LIB ON"
-#                         "JITIFY_USE_CACHE ON"
-#                         "CUDA_STATIC_RUNTIME ON"
-#                         "DISABLE_DEPRECATION_WARNING ON"
-#                         "AUTO_DETECT_CUDA_ARCHITECTURES ON"
-#     )
+CPMFindPackage(NAME  cudf
+        VERSION         "0.19.0"
+        GIT_REPOSITORY  https://github.com/rapidsai/cudf.git
+        GIT_TAG         branch-0.19
+        GIT_SHALLOW     TRUE
+        SOURCE_SUBDIR   cpp
+        OPTIONS         "BUILD_TESTS OFF"
+                        "BUILD_BENCHMARKS OFF"
+                        "ARROW_STATIC_LIB ON"
+                        "JITIFY_USE_CACHE ON"
+                        "CUDA_STATIC_RUNTIME ON"
+                        "DISABLE_DEPRECATION_WARNING ON"
+                        "AUTO_DETECT_CUDA_ARCHITECTURES ON"
+    )
 
 ######################################################################################################
 # - shareable_dataframes -----------------------------------------------------------------------------
@@ -110,20 +110,19 @@ if(BUILD_SHAREABLE_DATAFRAME)
                             "${CMAKE_CURRENT_SOURCE_DIR}/include"
                             )
 
-  # target_link_libraries(shareable_dataframe
-  #                       cudf::cudf
-  #                       )
-
   # Add Conda library paths if specified
   if(CONDA_LINK_DIRS)
     target_link_directories(shareable_dataframe PUBLIC "$<BUILD_INTERFACE:${CONDA_LINK_DIRS}>")
-    target_link_libraries(shareable_dataframe cudf)
   endif()
 
   # Add Conda include paths if specified
   if(CONDA_INCLUDE_DIRS)
     target_include_directories(shareable_dataframe PUBLIC "$<BUILD_INTERFACE:${CONDA_INCLUDE_DIRS}>")
   endif()
+
+  target_link_libraries(shareable_dataframe
+                        cudf::cudf
+                        )
 
 endif()
 
@@ -132,9 +131,9 @@ endif()
 # ###################################################################################################
 # # - library paths ---------------------------------------------------------------------------------
 
-link_directories("${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES}" # CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES is an undocumented/unsupported variable containing the link directories for nvcc
-                 "${CMAKE_BINARY_DIR}/lib"
-                 "${CMAKE_BINARY_DIR}")
+# link_directories("${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES}" # CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES is an undocumented/unsupported variable containing the link directories for nvcc
+#                  "${CMAKE_BINARY_DIR}/lib"
+#                  "${CMAKE_BINARY_DIR}")
 
 ###################################################################################################
 # - install targets -------------------------------------------------------------------------------

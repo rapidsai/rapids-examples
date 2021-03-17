@@ -25,7 +25,7 @@ CUDA_VERSION_MINOR=$(echo $CUDA_VERSION | tr -d '.' | cut -c 3); \
 && add-apt-repository -y ppa:ubuntu-toolchain-r/test \
 && apt update -y \
 && apt install -y \
-   build-essential git wget \
+   build-essential git wget vim\
    gcc-${GCC_VERSION} g++-${GCC_VERSION} \
    # CMake dependencies
    curl libssl-dev libcurl4-openssl-dev zlib1g-dev \
@@ -59,9 +59,6 @@ RUN mkdir -p /rapids \
 # Create shareable_dataframes conda environment
 RUN conda env create -f /rapids/rapids-examples/shareable-dataframes/conda/shareable_dataframes.yml --name shareable_dataframes
 
-# # Make all RUN commands run in the context of the `shareable_dataframes` conda environment
-# SHELL ["conda", "run", "-n", "shareable_dataframes", "/bin/bash", "-c"]
-
 # Configure
 RUN source activate shareable_dataframes \
     && cmake \
@@ -71,14 +68,16 @@ RUN source activate shareable_dataframes \
     -S /rapids/rapids-examples/shareable-dataframes/cpp \
     -B /rapids/rapids-examples/shareable-dataframes/cpp/build
 
-# # Build
-# RUN cmake --build /rapids/rapids-examples/shareable-dataframes/cpp/build -j${PARALLEL_LEVEL} -v
+# Build
+RUN source activate shareable_dataframes \
+    && cmake --build /rapids/rapids-examples/shareable-dataframes/cpp/build -j${PARALLEL_LEVEL} -v
 
-# # Install (default install to `/usr/local/{include|lib}` prefix)
-# RUN cmake --install /rapids/rapids-examples/shareable-dataframes/cpp/build -v
+# Install (default install to `/usr/local/{include|lib}` prefix)
+RUN source activate shareable_dataframes \
+    && cmake --install /rapids/rapids-examples/shareable-dataframes/cpp/build -v
 
-# # Since the default install location is /usr/local/lib. Lets copy to the anaconda env to make things easier for Python development
-# RUN cp /usr/local/lib/libshareable_dataframe.so /root/miniconda3/envs/shareable_dataframes/lib/.
+# Since the default install location is /usr/local/lib. Lets copy to the anaconda env to make things easier for Python development
+RUN cp /usr/local/lib/libshareable_dataframe.so /root/miniconda3/envs/shareable_dataframes/lib/.
 
 SHELL ["/bin/bash", "-l"]
 CMD ["/bin/bash", "-l"]
