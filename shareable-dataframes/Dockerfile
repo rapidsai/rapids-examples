@@ -64,7 +64,7 @@ RUN source activate shareable_dataframes \
     && cmake \
     -DBUILD_TESTS=OFF \
     -DBUILD_BENCHMARKS=OFF \
-    -DCMAKE_CUDA_ARCHITECTURES="ALL" \
+    -DCMAKE_CUDA_ARCHITECTURES= \
     -S /rapids/rapids-examples/shareable-dataframes/cpp \
     -B /rapids/rapids-examples/shareable-dataframes/cpp/build
 
@@ -77,7 +77,7 @@ RUN source activate shareable_dataframes \
     && cmake --install /rapids/rapids-examples/shareable-dataframes/cpp/build -v
 
 # Since the default install location is /usr/local/lib. Lets copy to the anaconda env to make things easier for Python development
-RUN cp /usr/local/lib/libshareable_dataframe.so /root/miniconda3/envs/shareable_dataframes/lib/.
+RUN cp /usr/local/lib/libshareable_dataframe.so /conda/envs/shareable_dataframes/lib/.
 
 SHELL ["/bin/bash", "-l"]
 CMD ["/bin/bash", "-l"]
