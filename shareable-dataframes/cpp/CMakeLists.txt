@@ -10,6 +10,21 @@ endif(NOT CMAKE_CUDA_COMPILER)
 option(BUILD_SHAREABLE_DATAFRAME "Build the strings_udf project" ON)
 set(SHAREABLE_DATAFRAME "shareable-dataframes")
 
+###################################################################################################
+# - conda environment -----------------------------------------------------------------------------
+
+if("$ENV{CONDA_BUILD}" STREQUAL "1")
+    set(CMAKE_PREFIX_PATH "$ENV{BUILD_PREFIX};$ENV{PREFIX};${CMAKE_PREFIX_PATH}")
+    set(CONDA_INCLUDE_DIRS "$ENV{BUILD_PREFIX}/include" "$ENV{PREFIX}/include")
+    set(CONDA_LINK_DIRS "$ENV{BUILD_PREFIX}/lib" "$ENV{PREFIX}/lib")
+    message(VERBOSE "CUDF: Conda build detected, CMAKE_PREFIX_PATH set to: ${CMAKE_PREFIX_PATH}")
+elseif(DEFINED ENV{CONDA_PREFIX})
+    set(CMAKE_PREFIX_PATH "$ENV{CONDA_PREFIX};${CMAKE_PREFIX_PATH}")
+    set(CONDA_INCLUDE_DIRS "$ENV{CONDA_PREFIX}/include")
+    set(CONDA_LINK_DIRS "$ENV{CONDA_PREFIX}/lib")
+    message(VERBOSE "CUDF: Conda environment detected, CMAKE_PREFIX_PATH set to: ${CMAKE_PREFIX_PATH}")
+endif()
+
 #################################################################################################
 # - CPM -----------------------------------------------------------------------------------------
 
@@ -67,20 +82,41 @@ set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -w --expt-extended-lambda --expt-relax
 ####################################################################################################
 # - cudf -------------------------------------------------------------------------------------------
 
-CPMAddPackage(NAME  cudf
-        VERSION         "0.19.0"
-        GIT_REPOSITORY  https://github.com/rapidsai/cudf.git
-        GIT_TAG         branch-0.19
-        GIT_SHALLOW     TRUE
-        SOURCE_SUBDIR   cpp
-        OPTIONS         "BUILD_TESTS OFF"
-                        "BUILD_BENCHMARKS OFF"
-                        "ARROW_STATIC_LIB ON"
-                        "JITIFY_USE_CACHE ON"
-                        "CUDA_STATIC_RUNTIME ON"
-                        "DISABLE_DEPRECATION_WARNING ON"
-                        "AUTO_DETECT_CUDA_ARCHITECTURES ON"
+# CPMFindPackage(NAME  cudf
+#         VERSION         "0.19.0"
+#         GIT_REPOSITORY  https://github.com/rapidsai/cudf.git
+#         GIT_TAG         branch-0.19
+#         GIT_SHALLOW     TRUE
+#         SOURCE_SUBDIR   cpp
+#         OPTIONS         "BUILD_TESTS OFF"
+#                         "BUILD_BENCHMARKS OFF"
+#                         "ARROW_STATIC_LIB ON"
+#                         "JITIFY_USE_CACHE ON"
+#                         "CUDA_STATIC_RUNTIME OFF"
+#                         "DISABLE_DEPRECATION_WARNING ON"
+#                         "AUTO_DETECT_CUDA_ARCHITECTURES ON"
+#     )
+
+######################################################################################################
+# - libcudacxx ---------------------------------------------------------------------------------------
+
+function(find_and_configure_libcudacxx VERSION)
+    CPMFindPackage(NAME     libcudacxx
+        VERSION             ${VERSION}
+        GIT_REPOSITORY      https://github.com/NVIDIA/libcudacxx.git
+        GIT_TAG             ${VERSION}
+        GIT_SHALLOW         TRUE
+        DOWNLOAD_ONLY       TRUE
     )
+    set(LIBCUDACXX_DIR "${libcudacxx_SOURCE_DIR}" PARENT_SCOPE)
+    set(LIBCUDACXX_INCLUDE_DIR "${libcudacxx_SOURCE_DIR}/include" PARENT_SCOPE)
+    set(LIBCXX_DIR "${libcudacxx_SOURCE_DIR}/libcxx" PARENT_SCOPE)
+    set(LIBCXX_INCLUDE_DIR "${libcudacxx_SOURCE_DIR}/libcxx/include" PARENT_SCOPE)
+endfunction()
+
+set(CUDF_MIN_VERSION_libcudacxx 1.4.0)
+
+find_and_configure_libcudacxx(${CUDF_MIN_VERSION_libcudacxx})
 
 ######################################################################################################
 # - shareable_dataframes -----------------------------------------------------------------------------
@@ -89,15 +125,28 @@ if(BUILD_SHAREABLE_DATAFRAME)
   message(STATUS "Building ${BUILD_SHAREABLE_DATAFRAME} example")
 
   # Create the `shareable_dataframe` shared object
-  add_library(shareable_dataframe "src/kernel_wrapper.cu")
+  add_library(shareable_dataframe SHARED
+              "src/kernel_wrapper.cu")
 
   target_include_directories(shareable_dataframe PRIVATE 
                             "${CMAKE_CURRENT_SOURCE_DIR}/include"
+                            "${LIBCUDACXX_INCLUDE_DIR}"
                             )
 
+  # Add Conda library paths if specified
+  if(CONDA_LINK_DIRS)
+    target_link_directories(shareable_dataframe PUBLIC "$<BUILD_INTERFACE:${CONDA_LINK_DIRS}>")
+  endif()
+
+  # Add Conda include paths if specified
+  if(CONDA_INCLUDE_DIRS)
+    target_include_directories(shareable_dataframe PUBLIC "$<BUILD_INTERFACE:${CONDA_INCLUDE_DIRS}>")
+  endif()
+
   target_link_libraries(shareable_dataframe
-                        cudf::cudf
+                        cudf
                         )
+
 endif()
 
 
@@ -108,10 +157,6 @@ endif()
 link_directories("${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES}" # CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES is an undocumented/unsupported variable containing the link directories for nvcc
                  "${CMAKE_BINARY_DIR}/lib"
                  "${CMAKE_BINARY_DIR}")
-
-if(CONDA_LINK_DIRS)
-    link_directories("${CONDA_LINK_DIRS}")
-endif(CONDA_LINK_DIRS)
 
 ###################################################################################################
 # - install targets -------------------------------------------------------------------------------
@@ -126,8 +171,8 @@ install(TARGETS shareable_dataframe
         DESTINATION lib
         EXPORT shareable_dataframes-targets)
 
-install(DIRECTORY
-            ${CUDF_SOURCE_DIR}/include
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+# install(DIRECTORY
+#             ${CUDF_SOURCE_DIR}/include
+#         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 include(CMakePackageConfigHelpers)
