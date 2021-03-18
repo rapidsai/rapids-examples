@@ -145,7 +145,6 @@ if(BUILD_SHAREABLE_DATAFRAME)
 
   target_link_libraries(shareable_dataframe
                         cudf
-                        rmm
                         )
 
 endif()
