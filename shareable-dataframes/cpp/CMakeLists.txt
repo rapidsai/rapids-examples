@@ -82,20 +82,20 @@ set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -w --expt-extended-lambda --expt-relax
 ####################################################################################################
 # - cudf -------------------------------------------------------------------------------------------
 
-CPMFindPackage(NAME  cudf
-        VERSION         "0.19.0"
-        GIT_REPOSITORY  https://github.com/rapidsai/cudf.git
-        GIT_TAG         branch-0.19
-        GIT_SHALLOW     TRUE
-        SOURCE_SUBDIR   cpp
-        OPTIONS         "BUILD_TESTS OFF"
-                        "BUILD_BENCHMARKS OFF"
-                        "ARROW_STATIC_LIB ON"
-                        "JITIFY_USE_CACHE ON"
-                        "CUDA_STATIC_RUNTIME OFF"
-                        "DISABLE_DEPRECATION_WARNING ON"
-                        "AUTO_DETECT_CUDA_ARCHITECTURES ON"
-    )
+# CPMFindPackage(NAME  cudf
+#         VERSION         "0.19.0"
+#         GIT_REPOSITORY  https://github.com/rapidsai/cudf.git
+#         GIT_TAG         branch-0.19
+#         GIT_SHALLOW     TRUE
+#         SOURCE_SUBDIR   cpp
+#         OPTIONS         "BUILD_TESTS OFF"
+#                         "BUILD_BENCHMARKS OFF"
+#                         "ARROW_STATIC_LIB ON"
+#                         "JITIFY_USE_CACHE ON"
+#                         "CUDA_STATIC_RUNTIME OFF"
+#                         "DISABLE_DEPRECATION_WARNING ON"
+#                         "AUTO_DETECT_CUDA_ARCHITECTURES ON"
+#     )
 
 ######################################################################################################
 # - shareable_dataframes -----------------------------------------------------------------------------
@@ -121,7 +121,8 @@ if(BUILD_SHAREABLE_DATAFRAME)
   endif()
 
   target_link_libraries(shareable_dataframe
-                        cudf::cudf
+                        cudf
+                        rmm
                         )
 
 endif()
