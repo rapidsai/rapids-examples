@@ -171,8 +171,8 @@ install(TARGETS shareable_dataframe
         DESTINATION lib
         EXPORT shareable_dataframes-targets)
 
-install(DIRECTORY
-            ${CUDF_SOURCE_DIR}/include
-        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+# install(DIRECTORY
+#             ${CUDF_SOURCE_DIR}/include
+#         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 include(CMakePackageConfigHelpers)
