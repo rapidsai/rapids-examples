@@ -130,7 +130,7 @@ if(BUILD_SHAREABLE_DATAFRAME)
   target_include_directories(shareable_dataframe PRIVATE 
                             "${CMAKE_CURRENT_SOURCE_DIR}/include"
                             "${LIBCUDACXX_INCLUDE_DIR}"
-                            "${LIBCXX_INCLUDE_DIR}"
+                            # "${LIBCXX_INCLUDE_DIR}"
                             )
 
   # Add Conda library paths if specified
