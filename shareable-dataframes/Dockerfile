@@ -77,5 +77,10 @@ RUN source activate shareable_dataframes \
 RUN source activate shareable_dataframes \
     && cmake --install /rapids/rapids-examples/shareable-dataframes/cpp/build -v
 
+# Build the python code
+RUN source activate shareable_dataframes \
+    && cd /rapids/rapids-examples/shareable-dataframes/python \
+    && python setup.py build install
+
 SHELL ["/bin/bash", "-l"]
 CMD ["/bin/bash", "-l"]
