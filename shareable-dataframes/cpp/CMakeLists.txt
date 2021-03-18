@@ -98,6 +98,27 @@ set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -w --expt-extended-lambda --expt-relax
 #     )
 
 ######################################################################################################
+# - libcudacxx ---------------------------------------------------------------------------------------
+
+function(find_and_configure_libcudacxx VERSION)
+    CPMFindPackage(NAME     libcudacxx
+        VERSION             ${VERSION}
+        GIT_REPOSITORY      https://github.com/NVIDIA/libcudacxx.git
+        GIT_TAG             ${VERSION}
+        GIT_SHALLOW         TRUE
+        DOWNLOAD_ONLY       TRUE
+    )
+    set(LIBCUDACXX_DIR "${libcudacxx_SOURCE_DIR}" PARENT_SCOPE)
+    set(LIBCUDACXX_INCLUDE_DIR "${libcudacxx_SOURCE_DIR}/include" PARENT_SCOPE)
+    set(LIBCXX_DIR "${libcudacxx_SOURCE_DIR}/libcxx" PARENT_SCOPE)
+    set(LIBCXX_INCLUDE_DIR "${libcudacxx_SOURCE_DIR}/libcxx/include" PARENT_SCOPE)
+endfunction()
+
+set(CUDF_MIN_VERSION_libcudacxx 1.4.0)
+
+find_and_configure_libcudacxx(${CUDF_MIN_VERSION_libcudacxx})
+
+######################################################################################################
 # - shareable_dataframes -----------------------------------------------------------------------------
 
 if(BUILD_SHAREABLE_DATAFRAME)
