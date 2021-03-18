@@ -125,12 +125,12 @@ if(BUILD_SHAREABLE_DATAFRAME)
   message(STATUS "Building ${BUILD_SHAREABLE_DATAFRAME} example")
 
   # Create the `shareable_dataframe` shared object
-  add_library(shareable_dataframe "src/kernel_wrapper.cu")
+  add_library(shareable_dataframe SHARED
+              "src/kernel_wrapper.cu")
 
   target_include_directories(shareable_dataframe PRIVATE 
                             "${CMAKE_CURRENT_SOURCE_DIR}/include"
                             "${LIBCUDACXX_INCLUDE_DIR}"
-                            # "${LIBCXX_INCLUDE_DIR}"
                             )
 
   # Add Conda library paths if specified
