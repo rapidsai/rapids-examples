@@ -32,6 +32,6 @@ The client logic to interact with the served Triton model is present in [example
 
 ### Model Code:
 
-Python Model code is present in `models/rapids_tokenizer/1/model.py`.
+Python Model code is present in [models/rapids_tokenizer/1/model.py](models/rapids_tokenizer/1/model.py)
 
-The model configuration is defined in `models/rapids_tokenizer/config.pbtxt`.
+The model configuration is defined in [models/rapids_tokenizer/config.pbtxt](models/rapids_tokenizer/config.pbtxt)
