@@ -20,7 +20,7 @@ bash build.sh
 ```
 
 
-### Model Code:
+### Model Code
 The example model here does tokenization of string logs into numerical vectors using `cuDF's subwordTokenizer.`  
 
 Python model code is present in [models/rapids_tokenizer/1/model.py](models/rapids_tokenizer/1/model.py)
@@ -28,7 +28,7 @@ Python model code is present in [models/rapids_tokenizer/1/model.py](models/rapi
 The model configuration is defined in [models/rapids_tokenizer/config.pbtxt](models/rapids_tokenizer/config.pbtxt)
 
 
-## Serving:
+## Serving
 Triton inference server is started using [start_server.sh](start_server.sh). 
 
 ```bash
@@ -36,5 +36,5 @@ bash start_server.sh
 ```
 
 
-### Client Code:
+### Client Code
 The client logic to interact with the served Triton model is present in [example_client.ipynb](example_client.ipynb). 
