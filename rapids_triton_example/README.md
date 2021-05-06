@@ -21,7 +21,7 @@ bash build.sh
 
 ## Serving:
 
-Triton inference server is started using [start_server.sh]. 
+Triton inference server is started using [start_server.sh](start_server.sh). 
 
 The example model here does tokenization of string logs into numerical vectors using `cuDF's subwordTokenizer.`  
 
