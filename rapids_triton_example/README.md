@@ -5,7 +5,7 @@ Triton Inference Server simplifies the deployment of AI models at scale in produ
 
 Check out the Triton documentation at [link](https://github.com/triton-inference-server/server/blob/r21.04/README.md#documentation)
 
-## Using Rapids and Triton together:
+# Using Rapids and Triton together
 
 We use Triton's [python backend](https://github.com/triton-inference-server/python_backend), which allows you to server Python models that can execute arbitrary python code. 
 
