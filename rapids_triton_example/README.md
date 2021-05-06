@@ -7,11 +7,13 @@ Check out the Triton documentation at [link](https://github.com/triton-inference
 
 ## Using Rapids and Triton together:
 
-We use Triton's [python backend](https://github.com/triton-inference-server/python_backend), which allows you to server Python models that can execute arbitrary python code. Here we use to showcase a simple example of using Rapids with Triton.
+We use Triton's [python backend](https://github.com/triton-inference-server/python_backend), which allows you to server Python models that can execute arbitrary python code. 
+
+Here we showcase a simple example of using Rapids with Triton.
 
 ## Build 
 
-[build.sh](build.sh) creates a Triton+Rapids docker container which you can use to deploy your models.  
+[build.sh](build.sh) creates a Triton+Rapids docker container which you can use to deploy your rapids code with Triton.  
 
 ```bash
 bash build.sh
