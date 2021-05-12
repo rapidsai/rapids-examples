@@ -7,13 +7,13 @@ Check out the Triton documentation at [link](https://github.com/triton-inference
 
 # Using Rapids and Triton together
 
-We use Triton's [python backend](https://github.com/triton-inference-server/python_backend), which allows you to server Python models that can execute arbitrary python code. 
+We use Triton's [python backend](https://github.com/triton-inference-server/python_backend), which allows you to serve Python "models" that can execute arbitrary python (and thus RAPIDS) code.
 
-Here we showcase a simple example of using Rapids with Triton.
+Here we showcase a simple example of using RAPIDS with Triton.
 
 ## Build 
 
-[build.sh](build.sh) creates a Triton+Rapids docker container which you can use to deploy your rapids code with Triton.  
+[build.sh](build.sh) creates a Triton+RAPIDS docker container which you can use to deploy your rapids code with Triton.  
 
 ```bash
 bash build.sh
@@ -21,7 +21,7 @@ bash build.sh
 
 
 ### Model Code
-The example model here does tokenization of string logs into numerical vectors using `cuDF's subwordTokenizer.`  
+The example "model" here does tokenization of string logs into numerical vectors using `cuDF's subwordTokenizer.`  
 
 Python model code is present in [models/rapids_tokenizer/1/model.py](models/rapids_tokenizer/1/model.py)
 
