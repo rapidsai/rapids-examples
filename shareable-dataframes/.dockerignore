@@ -4,3 +4,4 @@ cpp/build
 python/build
 python/dist
 python/cudfkernel.egg-info
+python/kernel.cpp

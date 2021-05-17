@@ -47,10 +47,13 @@ ext = Extension(
     runtime_library_dirs=[cuda_lib_dir, os.path.join(os.sys.prefix, "lib"), "/usr/local/lib"],
     include_dirs=[
         os.path.dirname(sysconfig.get_path("include")),
+        os.path.dirname(sysconfig.get_path("include")) + "/libcudf/libcudacxx",
         numpy_include,
         cuda_include_dir,
+        "/usr/local/include",
         "../cpp/include",
     ],
+    extra_compile_args=["-std=c++17"],
 )
 
 setup(

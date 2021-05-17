@@ -50,14 +50,11 @@ ENV PATH=${PATH}:/conda/bin
 # Enables "source activate conda"
 SHELL ["/bin/bash", "-c"]
 
-# checkout the repo inside the container making it more portable
-RUN mkdir -p /rapids \
- && git clone https://github.com/jdye64/rapids-examples.git /rapids/rapids-examples \
- && cd /rapids/rapids-examples \
- && git checkout rapids-devel-base
+# Add the local shareable-dataframes code to the docker image
+ADD . /rapids/
 
 # Create shareable_dataframes conda environment
-RUN conda env create -f /rapids/rapids-examples/shareable-dataframes/conda/shareable_dataframes.yml --name shareable_dataframes
+RUN conda env create -f /rapids/conda/shareable_dataframes.yml --name shareable_dataframes
 
 # Configure
 RUN source activate shareable_dataframes \
@@ -66,20 +63,20 @@ RUN source activate shareable_dataframes \
     -DBUILD_BENCHMARKS=OFF \
     -DCMAKE_CUDA_ARCHITECTURES= \
     -DCMAKE_INSTALL_PREFIX=/conda/envs/shareable_dataframes \
-    -S /rapids/rapids-examples/shareable-dataframes/cpp \
-    -B /rapids/rapids-examples/shareable-dataframes/cpp/build
+    -S /rapids/cpp \
+    -B /rapids/cpp/build
 
 # Build
 RUN source activate shareable_dataframes \
-    && cmake --build /rapids/rapids-examples/shareable-dataframes/cpp/build -j${PARALLEL_LEVEL} -v
+    && cmake --build /rapids/cpp/build -j${PARALLEL_LEVEL} -v
 
 # Install (default install to `/usr/local/{include|lib}` prefix)
 RUN source activate shareable_dataframes \
-    && cmake --install /rapids/rapids-examples/shareable-dataframes/cpp/build -v
+    && cmake --install /rapids/cpp/build -v
 
 # Build the python code
 RUN source activate shareable_dataframes \
-    && cd /rapids/rapids-examples/shareable-dataframes/python \
+    && cd /rapids/python \
     && python setup.py build install
 
 SHELL ["/bin/bash", "-l"]
