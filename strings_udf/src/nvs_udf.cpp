@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020-2021, NVIDIA CORPORATION.
+ * Copyright (c) 2021, NVIDIA CORPORATION.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,28 +18,28 @@
 #include <sys/time.h>
 #include <fstream>
 #include <iostream>
-#include <sstream>
 #include <string>
 #include <vector>
 
-#include <rmm/thrust_rmm_allocator.h>
-#include <cudf/column/column_device_view.cuh>
 #include <cudf/column/column_factories.hpp>
+#include <cudf/column/column_view.hpp>
 #include <cudf/io/csv.hpp>
 #include <cudf/io/datasource.hpp>
+#include <cudf/strings/detail/utilities.hpp>
 #include <cudf/strings/string_view.cuh>
 #include <cudf/strings/strings_column_view.hpp>
 #include <cudf/table/table.hpp>
 #include <cudf/table/table_view.hpp>
+#include <cudf/utilities/span.hpp>
+
+#include <rmm/cuda_stream_view.hpp>
+#include <rmm/device_uvector.hpp>
 
 #include <locale.h>
-#include <thrust/device_vector.h>
-#include <thrust/execution_policy.h>
-#include <thrust/for_each.h>
-#include <thrust/transform.h>
 #include <unistd.h>
+#include <memory>
 
-#include "dstring.cuh"
+#include "dstring_view.hpp"
 #include "jitify.hpp"
 
 double GetTime()
@@ -49,37 +49,15 @@ double GetTime()
   return (double)(tv.tv_sec * 1000000 + tv.tv_usec) / 1000000.0;
 }
 
-using string_index_pair = thrust::pair<const char*, cudf::size_type>;
-
-rmm::device_vector<dstring_view> create_vector_from_column(cudf::strings_column_view const& strings)
-{
-  auto strings_column = cudf::column_device_view::create(strings.parent());
-  auto d_column       = *strings_column;
-  auto count          = strings.size();
-  rmm::device_vector<dstring_view> strings_vector(count);
-  thrust::transform(thrust::device,
-                    thrust::make_counting_iterator<cudf::size_type>(0),
-                    thrust::make_counting_iterator<cudf::size_type>(count),
-                    strings_vector.begin(),
-                    [d_column] __device__(cudf::size_type idx) {
-                      if (d_column.is_null(idx)) return dstring_view(nullptr, 0);
-                      auto d_str = d_column.template element<cudf::string_view>(idx);
-                      if (d_str.empty()) return dstring_view{"", 0};
-                      return dstring_view{d_str.data(), d_str.size_bytes()};
-                    });
-  return strings_vector;
-}
-
-std::string load_udf(std::ifstream& input)
+std::string load_udf(std::ifstream &input)
 {
   std::stringstream udf;
-  udf << "\n#include \"dstring.cuh\"\n";
   std::string line;
   while (std::getline(input, line)) udf << line << "\n";
   return udf.str();
 }
 
-void print_column(cudf::strings_column_view const& input)
+void print_column(cudf::strings_column_view const &input)
 {
   if (input.chars_size() == 0) {
     printf("empty\n");
@@ -96,28 +74,91 @@ void print_column(cudf::strings_column_view const& input)
              cudaMemcpyDeviceToHost);
   cudaMemcpy(h_chars.data(), chars.data<char>(), chars.size(), cudaMemcpyDeviceToHost);
 
-  for (unsigned int idx = 0; idx < input.size(); ++idx) {
+  for (int idx = 0; idx < input.size(); ++idx) {
     int offset      = h_offsets[idx];
-    const char* str = h_chars.data() + offset;
+    const char *str = h_chars.data() + offset;
     int length      = h_offsets[idx + 1] - offset;
     std::string output(str, length);
     std::cout << output << "\n";
   }
 }
 
-std::map<std::string, std::string> parse_cli_parms(int argc, const char** argv)
+std::map<std::string, std::string> parse_cli_parms(int argc, const char **argv)
 {
   std::map<std::string, std::string> parms;
   while (argc > 1) {
-    const char* value = argv[argc - 1];
-    const char* key   = (argv[argc - 2]) + 1;
+    const char *value = argv[argc - 1];
+    const char *key   = (argv[argc - 2]) + 1;
     parms[key]        = value;
     argc -= 2;
   }
   return parms;
 }
 
-int main(int argc, const char** argv)
+std::unique_ptr<cudf::column> process_udf(std::string udf,
+                                          std::string udf_name,
+                                          cudf::size_type size,
+                                          std::vector<cudf::column_view> input,
+                                          size_t heap_size)
+{
+  size_t max_malloc_heap_size = 0;
+  cudaDeviceGetLimit(&max_malloc_heap_size, cudaLimitMallocHeapSize);
+  if (max_malloc_heap_size < heap_size) {
+    max_malloc_heap_size = heap_size;
+    if (cudaDeviceSetLimit(cudaLimitMallocHeapSize, max_malloc_heap_size) != cudaSuccess) {
+      fprintf(stderr, "could not set malloc heap size to %ldMB\n", (heap_size / (1024 * 1024)));
+      return nullptr;
+    }
+  }
+
+  rmm::cuda_stream_view stream = rmm::cuda_stream_default;
+
+  // create input array of dstring_view objects
+  auto strs               = cudf::strings_column_view(input[0]);
+  auto strings_count      = strs.size();
+  auto in_strs            = cudf::strings::detail::create_string_vector_from_column(strs);
+  dstring_view *d_in_strs = reinterpret_cast<dstring_view *>(in_strs.data());
+
+  // allocate an output array
+  rmm::device_uvector<cudf::string_view> out_strs(strings_count, stream);
+  cudaMemset(out_strs.data(), 0, sizeof(cudf::string_view) * strings_count);
+
+  // add dstring header to udf
+  udf = "\n#include \"dstring.cuh\"\n" + udf;
+
+  // launch custom kernel
+  {
+    auto d_out_strs = reinterpret_cast<dstring *>(out_strs.data());
+    // double st_kernel = GetTime();
+    static jitify::JitCache kernel_cache;
+    // nvrtc did not recognize --expt-relaxed-constexpr
+    // also it has trouble including thrust headers
+    jitify::Program program = kernel_cache.program(udf.c_str(), 0, {"-I.", "-std=c++14"});
+    unsigned num_blocks     = ((strings_count - 1) / 128) + 1;
+    dim3 grid(num_blocks);
+    dim3 block(128);
+    CUresult result = program.kernel(udf_name.c_str())
+                        .instantiate()
+                        .configure(grid, block)
+                        .launch(d_in_strs, d_out_strs, strings_count);
+    const char *result_str = "ok";
+    if (result) {
+      cuGetErrorName(result, &result_str);
+      fprintf(stderr, "launch result = %d [%s]\n", (int)result, result_str);
+    }
+    auto err = cudaDeviceSynchronize();
+    if (err) { fprintf(stderr, "%s=(%d) ", udf_name.c_str(), (int)err); }
+    // double et_kernel = GetTime() - st_kernel;
+    // fprintf(stderr, "%g seconds\n", et_kernel);
+  }
+
+  // convert the output array into a strings column
+  cudf::device_span<cudf::string_view> indices(out_strs.data(), strings_count);
+  auto results = cudf::make_strings_column(indices, cudf::string_view(nullptr, 0));
+  return results;
+}
+
+int main(int argc, const char **argv)
 {
   if (argc < 3) {
     printf("parameters:\n");
@@ -163,6 +204,9 @@ int main(int argc, const char** argv)
   auto csv_result = cudf::io::read_csv(in_opts);
   auto strs       = cudf::strings_column_view(csv_result.tbl->view().column(0));
 
+  double et_load_data = GetTime() - st_load_data;
+  if (parms.find("v") != parms.end()) fprintf(stderr, "Load data: %g seconds\n", et_load_data);
+
   auto strings_count = strs.size();
   printf("strings count = %d\n", strings_count);
   std::string udf = load_udf(udf_stream);
@@ -172,59 +216,10 @@ int main(int argc, const char** argv)
   std::string heap_parm = parms["m"];
   if (!heap_parm.empty()) heap_size = std::atoi(heap_parm.c_str());
   heap_size *= 1024 * 1024;
-  size_t max_malloc_heap_size = 0;
-  cudaDeviceGetLimit(&max_malloc_heap_size, cudaLimitMallocHeapSize);
-  if (max_malloc_heap_size < heap_size) max_malloc_heap_size = heap_size;
-  if (cudaDeviceSetLimit(cudaLimitMallocHeapSize, max_malloc_heap_size) != cudaSuccess) {
-    fprintf(stderr, "could not set malloc heap size to %ldMB\n", (heap_size / (1024 * 1024)));
-    return -1;
-  }
-
-  // create input array of dstring_view objects
-  rmm::device_vector<dstring_view> in_strs = create_vector_from_column(strs);
-  auto d_in_strs                           = in_strs.data().get();
-
-  // allocate an output array
-  thrust::device_vector<dstring> out_strs(strings_count);
-  dstring* d_out_strs = out_strs.data().get();
-
-  double et_load_data = GetTime() - st_load_data;
-  if (parms.find("v") != parms.end()) fprintf(stderr, "Load data: %g seconds\n", et_load_data);
-
-  // launch custom kernel
-  {
-    double st_kernel = GetTime();
-    static jitify::JitCache kernel_cache;
-    // nvrtc did not recognize --expt-relaxed-constexpr
-    // also it has trouble including thrust headers
-    jitify::Program program = kernel_cache.program(udf.c_str(), 0, {"-I.", "-std=c++14"});
-    unsigned num_blocks     = ((strings_count - 1) / 128) + 1;
-    dim3 grid(num_blocks);
-    dim3 block(128);
-    CUresult result = program.kernel(udf_name.c_str())
-                        .instantiate()
-                        .configure(grid, block)
-                        .launch(d_in_strs, d_out_strs, strings_count);
-    const char* result_str = "ok";
-    if (result) cuGetErrorName(result, &result_str);
-    fprintf(stderr, "launch result = %d [%s]\n", (int)result, result_str);
-    fprintf(stderr, "%s=(%d) ", udf_name.c_str(), (int)cudaDeviceSynchronize());
-    double et_kernel = GetTime() - st_kernel;
-    fprintf(stderr, "%g seconds\n", et_kernel);
-  }
 
   double st_output_data = GetTime();
 
-  // convert output to pointers array
-  rmm::device_vector<string_index_pair> ptrs(strings_count);
-  thrust::transform(thrust::device,
-                    out_strs.begin(),
-                    out_strs.end(),
-                    ptrs.begin(),
-                    [] __device__(auto const& dstr) {
-                      return string_index_pair{dstr.data(), (cudf::size_type)dstr.size_bytes()};
-                    });
-  auto results = cudf::make_strings_column(ptrs);
+  auto results = process_udf(udf, udf_name, strings_count, {strs.parent()}, heap_size);
 
   double et_output_data = GetTime() - st_output_data;
   if (parms.find("v") != parms.end())
