@@ -1,6 +1,12 @@
 # Using PyCuda and Cudf
 ## Overview
-Sometimes, a user may wish to conduct custom numeric operations on a `cudf` column. However, to do this through custom cython bindings may require significant work and overhead, as shown [here](https://github.com/rapidsai/rapids-examples/tree/main/shareable-dataframes). A quick, but more limiting alternative would be to make use of `PyCuda`, allowing us to write simple CUDA kernels that are able to modify our `cudf` dataframe.
+Sometimes, a user may wish to run custom device code to do numerical operations on a `cuDF` column. 
+
+One way to do this is through custom cython bindings which can require significant setup work as shown [here](https://github.com/rapidsai/rapids-examples/tree/main/shareable-dataframes).
+
+With `PyCUDA`,  the custom CUDA kernels can be run directly using its` sourcModule` to modify the `cuDF`  dataframe.   
+
+`PyCUDA` has limitations, especially around running host-side code, which can are noted in detail in the limitations section.  
 
 ## PyCuda interactions
 In order to write custom cuda kernel in `pycuda` we make use of `SourceModule` provided to us by the library. After constructing the kernel, we can retreive the function and store it in a variable like below.
