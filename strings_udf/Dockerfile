@@ -78,7 +78,7 @@ RUN source activate strings_udf \
 # Build the python code
 RUN source activate strings_udf \
     && cd /rapids/rapids-examples/strings_udf/python \
-    && python setup.py build install
+    && python build.py build install
 
 SHELL ["/bin/bash", "-l"]
 CMD ["/bin/bash", "-l"]
