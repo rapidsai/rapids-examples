@@ -40,7 +40,7 @@
 #include <unistd.h>
 
 #include "dstring.cuh"
-#include "jitify.hpp"
+#include <jitify.hpp>
 
 double GetTime()
 {

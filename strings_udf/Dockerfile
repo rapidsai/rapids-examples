@@ -76,7 +76,7 @@ RUN source activate strings_udf \
    && cmake --install /rapids/rapids-examples/strings_udf/build -v
 
 # Build the python code
-RUN source activate shareable_dataframes \
+RUN source activate strings_udf \
     && cd /rapids/rapids-examples/strings_udf/python \
     && python setup.py build install
 

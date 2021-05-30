@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
 
-project(STRINGS_UDF VERSION 21.08 LANGUAGES C CXX CUDA)
+project(STRINGS_UDF VERSION 21.08.00 LANGUAGES C CXX CUDA)
 
 # Ensure CUDA is avilable
 if(NOT CMAKE_CUDA_COMPILER)
@@ -80,7 +80,7 @@ set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -w --expt-extended-lambda --expt-relax
 # - cudf -------------------------------------------------------------------------------------------
 
 CPMFindPackage(NAME  cudf
-        VERSION         "21.08"
+        VERSION         "21.08.00"
         GIT_REPOSITORY  https://github.com/rapidsai/cudf.git
         GIT_TAG         branch-21.08
         GIT_SHALLOW     TRUE
@@ -116,13 +116,32 @@ set(CUDF_MIN_VERSION_libcudacxx 1.4.0)
 find_and_configure_libcudacxx(${CUDF_MIN_VERSION_libcudacxx})
 
 ######################################################################################################
+# - jitify -------------------------------------------------------------------------------------------
+
+function(find_and_configure_jitify)
+    CPMFindPackage(NAME     jitify
+            VERSION         2.0.0
+            GIT_REPOSITORY  https://github.com/rapidsai/jitify.git
+            GIT_TAG         cudf_0.19
+            GIT_SHALLOW     TRUE
+            DOWNLOAD_ONLY   TRUE)
+    set(JITIFY_INCLUDE_DIR "${jitify_SOURCE_DIR}" PARENT_SCOPE)
+endfunction()
+
+find_and_configure_jitify()
+
+######################################################################################################
 # - strings_udf --------------------------------------------------------------------------------------
 
-message(STATUS "Building 'strings_udf' example")
-add_executable(strings_udf "${CMAKE_CURRENT_SOURCE_DIR}/src/nvs_udf.cu")
+# add_executable(strings_udf "${CMAKE_CURRENT_SOURCE_DIR}/src/nvs_udf.cpp")
+
+add_library(strings_udf SHARED
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/nvs_udf.cu")
+
 target_include_directories(strings_udf PRIVATE 
                           "${CMAKE_CURRENT_SOURCE_DIR}/include"
-                          "${LIBCUDACXX_INCLUDE_DIR}")
+                          "${LIBCUDACXX_INCLUDE_DIR}"
+                          "$<BUILD_INTERFACE:${JITIFY_INCLUDE_DIR}>")
 
 link_directories("${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES}"
                 "${CMAKE_BINARY_DIR}/lib"
