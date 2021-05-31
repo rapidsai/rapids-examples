@@ -38,6 +38,7 @@ extensions = [
         include_dirs=[
             os.path.dirname(sysconfig.get_path("include")),
             os.path.dirname(sysconfig.get_path("include")) + "/libcudf/libcudacxx",
+            "/rapids/rapids-examples/strings_udf/build/_deps/jitify-src",
             os.path.dirname("/rapids/rapids-examples/strings_udf/build/_deps/jitify-src"),
             cuda_include_dir,
             "/usr/local/include",

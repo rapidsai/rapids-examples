@@ -135,12 +135,15 @@ find_and_configure_jitify()
 
 # add_executable(strings_udf "${CMAKE_CURRENT_SOURCE_DIR}/src/nvs_udf.cpp")
 
+message(STATUS "Jitify include Dir ${JITIFY_INCLUDE_DIR}")
+
 add_library(strings_udf SHARED
             "${CMAKE_CURRENT_SOURCE_DIR}/src/nvs_udf.cu")
 
 target_include_directories(strings_udf PRIVATE 
                           "${CMAKE_CURRENT_SOURCE_DIR}/include"
                           "${LIBCUDACXX_INCLUDE_DIR}"
+                          "${JITIFY_INCLUDE_DIR}"
                           "$<BUILD_INTERFACE:${JITIFY_INCLUDE_DIR}>")
 
 link_directories("${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES}"
