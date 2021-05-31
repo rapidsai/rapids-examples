@@ -40,7 +40,7 @@
 #include <memory>
 
 #include "dstring_view.hpp"
-#include "jitify.hpp"
+#include <jitify.hpp>
 
 double GetTime()
 {
