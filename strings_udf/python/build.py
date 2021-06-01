@@ -1,7 +1,7 @@
-
 import os
 import sys
 import sysconfig
+import shutil
 from distutils.spawn import find_executable
 from distutils.sysconfig import get_python_lib
 
@@ -10,43 +10,66 @@ from Cython.Distutils import build_ext
 from setuptools import find_packages, setup
 from setuptools.extension import Extension
 
-CUDA_HOME = "/usr/local/cuda"
+# Locate CUDA_HOME
+CUDA_HOME = os.environ.get("CUDA_HOME", False)
+if not CUDA_HOME:
+    path_to_cuda_gdb = shutil.which("cuda-gdb")
+    if path_to_cuda_gdb is None:
+        raise OSError(
+            "Could not locate CUDA. "
+            "Please set the environment variable "
+            "CUDA_HOME to the path to the CUDA installation "
+            "and try again."
+        )
+    CUDA_HOME = os.path.dirname(os.path.dirname(path_to_cuda_gdb))
+
 cuda_include_dir = os.path.join(CUDA_HOME, "include")
 cuda_lib_dir = os.path.join(CUDA_HOME, "lib64")
 
-CUDF_HOME = "/cudf"
-CUDF_ROOT = "/cudf/cpp/build"
+print("CUDA Include Dir: " + cuda_include_dir)
+print("CUDA Library Dir: " + cuda_lib_dir)
+print("OS System Lib Path: " + str(os.path.join(os.sys.prefix, "lib")))
+print("OS System Include Path: " + str(os.path.dirname(sysconfig.get_path("include"))))
 
 extensions = [
     Extension(
         "*",
         sources=["cudfstrings_udf.pyx"],
         include_dirs=[
-            os.path.abspath(os.path.join(CUDF_HOME, "cpp/include/cudf")),
-            os.path.abspath(os.path.join(CUDF_HOME, "cpp/include")),
-            os.path.abspath(os.path.join(CUDF_ROOT, "include")),
-            os.path.join(CUDF_ROOT, "_deps/libcudacxx-src/include"),
-            os.path.join(CUDF_ROOT, "_deps/dlpack-src/include"),
-            os.path.join(
-                os.path.dirname(sysconfig.get_path("include")), "libcudf/libcudacxx",
-            ),
             os.path.dirname(sysconfig.get_path("include")),
+            os.path.dirname(sysconfig.get_path("include")) + "/libcudf/libcudacxx",
+            "/rapids/rapids-examples/strings_udf/build/_deps/jitify-src",
+            os.path.dirname("/rapids/rapids-examples/strings_udf/build/_deps/jitify-src"),
             cuda_include_dir,
+            "/usr/local/include",
+            "../include",
+            "../src",
         ],
         library_dirs=(
-            [get_python_lib(), os.path.join(os.sys.prefix, "lib"), cuda_lib_dir,]
+            [get_python_lib(), os.path.join(os.sys.prefix, "lib"), cuda_lib_dir, "/usr/local/lib",]
         ),
-        libraries=["cudart", "cudf", "nvrtc"],
+        libraries=["cudart", "cudf", "nvrtc", "strings_udf"],
         language="c++",
+        runtime_library_dirs=[cuda_lib_dir, os.path.join(os.sys.prefix, "lib"), "/usr/local/lib"],
         extra_compile_args=["-std=c++17"],
     )
 ]
 
 setup(
     name="cudfstrings_udf",
+    version="21.08",
+    url="https://github.com/rapidsai/rapids-examples.git",
+    license="Apache 2.0",
     description="cudf strings udf library",
     author="NVIDIA Corporation",
     setup_requires=["cython"],
+    classifiers=[
+        "Intended Audience :: Developers",
+        "License :: OSI Approved :: Apache Software License",
+        "Programming Language :: C++",
+        "Programming Language :: CUDA",
+        "Programming Language :: Python",
+    ],
     ext_modules=cythonize(
         extensions,
         compiler_directives=dict(profile=False, language_level=3, embedsignature=True),
