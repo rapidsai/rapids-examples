@@ -1,14 +1,11 @@
 cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
 
-project(RAPIDS-EXAMPLES VERSION 0.20.0 LANGUAGES C CXX CUDA)
+project(RAPIDS-EXAMPLES VERSION 21.06.00 LANGUAGES C CXX CUDA)
 
 # Ensure CUDA is avilable
 if(NOT CMAKE_CUDA_COMPILER)
   message(SEND_ERROR "CMake cannot locate a CUDA compiler")
 endif(NOT CMAKE_CUDA_COMPILER)
-
-option(BUILD_SHAREABLE_DATAFRAME "Build the strings_udf project" ON)
-set(SHAREABLE_DATAFRAME "shareable-dataframes")
 
 ###################################################################################################
 # - conda environment -----------------------------------------------------------------------------
@@ -83,9 +80,9 @@ set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -w --expt-extended-lambda --expt-relax
 # - cudf -------------------------------------------------------------------------------------------
 
 CPMFindPackage(NAME  cudf
-        VERSION         "0.20.0"
+        VERSION         "21.06.00"
         GIT_REPOSITORY  https://github.com/rapidsai/cudf.git
-        GIT_TAG         branch-0.20
+        GIT_TAG         branch-21.06
         GIT_SHALLOW     TRUE
         SOURCE_SUBDIR   cpp
         OPTIONS         "BUILD_TESTS OFF"
@@ -121,35 +118,27 @@ find_and_configure_libcudacxx(${CUDF_MIN_VERSION_libcudacxx})
 ######################################################################################################
 # - shareable_dataframes -----------------------------------------------------------------------------
 
-if(BUILD_SHAREABLE_DATAFRAME)
-  message(STATUS "Building ${BUILD_SHAREABLE_DATAFRAME} example")
+add_library(shareable_dataframe SHARED
+            "src/kernel_wrapper.cu")
 
-  # Create the `shareable_dataframe` shared object
-  add_library(shareable_dataframe SHARED
-              "src/kernel_wrapper.cu")
+target_include_directories(shareable_dataframe PRIVATE 
+                          "${CMAKE_CURRENT_SOURCE_DIR}/include"
+                          "${LIBCUDACXX_INCLUDE_DIR}"
+                          )
 
-  target_include_directories(shareable_dataframe PRIVATE 
-                            "${CMAKE_CURRENT_SOURCE_DIR}/include"
-                            "${LIBCUDACXX_INCLUDE_DIR}"
-                            )
-
-  # Add Conda library paths if specified
-  if(CONDA_LINK_DIRS)
-    target_link_directories(shareable_dataframe PUBLIC "$<BUILD_INTERFACE:${CONDA_LINK_DIRS}>")
-  endif()
-
-  # Add Conda include paths if specified
-  if(CONDA_INCLUDE_DIRS)
-    target_include_directories(shareable_dataframe PUBLIC "$<BUILD_INTERFACE:${CONDA_INCLUDE_DIRS}>")
-  endif()
-
-  target_link_libraries(shareable_dataframe
-                        cudf
-                        )
-
+# Add Conda library paths if specified
+if(CONDA_LINK_DIRS)
+  target_link_directories(shareable_dataframe PUBLIC "$<BUILD_INTERFACE:${CONDA_LINK_DIRS}>")
 endif()
 
+# Add Conda include paths if specified
+if(CONDA_INCLUDE_DIRS)
+  target_include_directories(shareable_dataframe PUBLIC "$<BUILD_INTERFACE:${CONDA_INCLUDE_DIRS}>")
+endif()
 
+target_link_libraries(shareable_dataframe
+                      cudf
+                      )
 
 # ###################################################################################################
 # # - library paths ---------------------------------------------------------------------------------
@@ -170,9 +159,5 @@ set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME shareable-dataframes)
 install(TARGETS shareable_dataframe
         DESTINATION lib
         EXPORT shareable_dataframes-targets)
-
-# install(DIRECTORY
-#             ${CUDF_SOURCE_DIR}/include
-#         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 include(CMakePackageConfigHelpers)
