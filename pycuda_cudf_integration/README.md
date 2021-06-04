@@ -9,7 +9,7 @@ With `PyCUDA`,  the custom CUDA kernels can be run directly using its` sourcModu
 `PyCUDA` has limitations, especially around running host-side code, which can are noted in detail in the limitations section.  
 
 ## PyCUDA Interactions
-In order to write custom cuda kernel in `pycuda` we make use of `SourceModule` provided to us by the library. After constructing the kernel, we can retreive the function and store it in a variable like below.
+In order to write custom cuda kernel in `pycuda` we make use of `SourceModule`. After constructing the kernel, we can retrieve the function and store it in a variable like below.
 ```python
 import pycuda.autoprimaryctx
 from pycuda.compiler import SourceModule
@@ -27,7 +27,7 @@ mod = SourceModule("""
     """)
 func = mod.get_function("doublify")
 ```
-The interactions between `cudf` and `pycuda` is dependent upon the implementation of `cudf` columns as `cupy` arrays, which has the `__cuda_array_interface__` property implemented. Allowing us to pass on information regarding the column directly to `pycuda`, by passing it as a parameter like below.
+The interactions between `cudf` and `pycuda` is dependent upon the implementation of the `__cuda_array_interface__`, which serves as a contract to tell the world of how to convert the underlying data between array-like data structures, without requiring a copy.
 ```python
 import cudf
 import cupy as cp
@@ -35,11 +35,11 @@ import cupy as cp
 df = cudf.DataFrame({'col': [i for i in range(200000)]})
 length = cp.int32(len(df['col']))
 
-func(df['col'], size, block=(256,1,1), grid=(4096,))
+func(df['col'], length, block=(256,1,1), grid=(4096,))
 ```
 
 ## PyCuda Limitations
-At its core, `pycuda` is meant for writing CUDA kernels that operate on fixed length columns. This limits its usage (at least for now) to numeric columns only. Furthermore, one interesting fact about `pycuda` is that it allows including external libraries, such as `thrust` or `libcudf`. However, the issue becomes that the majority of these external libraries are meant to run on host code, which is not possible via `SourceModule`.
+At its core, `pycuda` is meant for writing CUDA kernels that operate on fixed length columns. One interesting fact about `pycuda` is that it allows including external libraries, such as `thrust` or `libcudf`. However, the issue becomes that pycuda allows device-based code in external libraries such as `thrust`, but does not support running host code.
 
 ## Working with external CUDA libraries
 To showcase how this can be done, we will be using a simple example of how we can fill a `cudf` column with random numbers.
@@ -100,4 +100,5 @@ Two key things to note, for `libcudf` to work, it requires both the `include/` i
 
 If you want include additional `nvcc` flags, you can add them to the list given to `options`.
 
-
+## When to use what?
+After reading the above, a question that may come to mind is when should you use `Pycuda`, `Cython` or any other alternatives that allow interfacing between `Python` and low-level `C` code? `Pycuda` is likely best used when the developer is looking for an easy and low overhead way of interfacing with a `CUDA` kernel for the purpose of accelerating an operation on their fixed length column data, as `Pycuda` allows the developer to access the power of GPU with little overhead. On the other hand, if the developer is okay with a large amount of `Cython` overhead and requires the ability to execute host-level code, than building `Cython` bindings will likely be the more appropriate option.
