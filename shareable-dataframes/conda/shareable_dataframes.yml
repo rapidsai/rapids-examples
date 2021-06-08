@@ -4,7 +4,6 @@ channels:
   - nvidia
   - rapidsai-nightly
   - conda-forge
-  - defaults
 dependencies:
   - cudf=21.06
   - rmm=21.06
