@@ -34,7 +34,7 @@ def onTrigger(context, session):
     session.read(flow_file, csv_flowfile)
 
     # From this point its just like any other way to get messages into cuDF
-    gdf = cudf.read_csv(path_or_buf=csv_flowfile.content,
+    gdf = cudf.read_csv(filepath_or_buffer=csv_flowfile.content,
                          lines=True,
                          engine="cudf")
     
