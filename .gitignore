@@ -11,6 +11,13 @@ sharable-dataframes/python/kernel.cpp
 # Ignore data files download by the script
 sharable-dataframes/data/weather
 
+# MiNiFi local run files to ignore
+thirdparty/MiNiFi/bin
+thirdparty/MiNiFi/content_repository
+thirdparty/MiNiFi/corecomponentstate
+thirdparty/MiNiFi/flowfile_repository
+thirdparty/MiNiFi/logs
+
 .cache
 .vscode
 
