@@ -8,8 +8,17 @@ With `PyCUDA`,  the custom CUDA kernels can be run directly using its` sourcModu
 
 `PyCUDA` has limitations, especially around running host-side code, which are noted in detail in the limitations section.  
 
-## PyCUDA Interactions
-In order to write custom cuda kernel in `pycuda` we make use of `SourceModule`. After constructing the kernel, we can retrieve the function and store it in a variable like below.
+## PyCuda Installation
+If `cudf` is not installed on your machine, follow the instructions outlined [here](https://github.com/rapidsai/cudf) for installing `cudf`. In the same conda environment where you have `cudf` installed, run:
+```bash
+pip install pycuda
+```
+Or
+```bash
+conda install -c conda-forge pycuda
+```
+## PyCuda Interactions
+In order to write custom cuda kernel in `pycuda` we make use of [`SourceModule`](https://documen.tician.de/pycuda/driver.html#pycuda.compiler.SourceModule), which creates a single `.cu` object from the source code provided to it. After constructing the kernel, we can retrieve the function and store it in a variable like below.
 ```python
 import pycuda.autoprimaryctx
 from pycuda.compiler import SourceModule
