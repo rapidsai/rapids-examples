@@ -1,0 +1,7 @@
+kernel.cpp
+setup.py
+cudfkernel.egg-info/PKG-INFO
+cudfkernel.egg-info/SOURCES.txt
+cudfkernel.egg-info/dependency_links.txt
+cudfkernel.egg-info/not-zip-safe
+cudfkernel.egg-info/top_level.txt
