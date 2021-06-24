@@ -23,11 +23,6 @@ if not CUDA_HOME:
 cuda_include_dir = os.path.join(CUDA_HOME, "include")
 cuda_lib_dir = os.path.join(CUDA_HOME, "lib64")
 
-print("CUDA Include Dir: " + cuda_include_dir)
-print("CUDA Library Dir: " + cuda_lib_dir)
-print("OS System Lib Path: " + str(os.path.join(os.sys.prefix, "lib")))
-print("OS System Include Path: " + str(os.path.dirname(sysconfig.get_path("include"))))
-
 try:
     numpy_include = numpy.get_include()
 except AttributeError:

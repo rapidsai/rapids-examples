@@ -22,7 +22,7 @@ def read_df(weather_file_path):
         "obs_time",
     ]
     usecols = column_names[0:4]
-    dtype_map = {'station_id': 'object', 'date': 'int64', 'type': 'object', 'val': 'float'}
+    dtype_map = {'station_id': 'object', 'date': 'int64', 'type': 'object', 'val': 'int64'}
 
     # All 2010 weather recordings
     weather_df = cudf.read_csv(
@@ -38,7 +38,7 @@ def read_df(weather_file_path):
     rainfall_kernel = cudfkernel.CudfWrapper(
         rainfall_df
     )  # Wrap the dataframe you want to perform Kernel calls on
-    rainfall_kernel.tenth_mm_to_inches(
+    rainfall_kernel.cython_tenth_mm_to_inches(
         4
     )  # column with index 4 is the "val" column
 

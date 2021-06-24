@@ -1,5 +1,9 @@
+#pragma once
+
 #include <string>
-#include <cudf/table/table_view.hpp>
+#include "kernel.cuh"
+#include <assert.h>
+#include <cstdio>
 
 class CudfWrapper {
   cudf::mutable_table_view mtv;

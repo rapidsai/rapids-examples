@@ -14,5 +14,5 @@ cdef class CudfWrapper:
     def __cinit__(self, Table t):
         self.gdf = new C_CudfWrapper(t.mutable_view())
 
-    def tenth_mm_to_inches(self, col_index):
+    def cython_tenth_mm_to_inches(self, col_index):
         self.gdf.tenth_mm_to_inches(col_index)

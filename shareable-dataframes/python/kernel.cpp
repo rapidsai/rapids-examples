@@ -2636,7 +2636,7 @@ static PyObject *__pyx_kp_s_unable_to_allocate_shape_and_str;
 static PyObject *__pyx_n_s_unpack;
 static PyObject *__pyx_n_s_update;
 static int __pyx_pf_10cudfkernel_11CudfWrapper___cinit__(struct __pyx_obj_10cudfkernel_CudfWrapper *__pyx_v_self, struct __pyx_obj_4cudf_4_lib_5table_Table *__pyx_v_t); /* proto */
-static PyObject *__pyx_pf_10cudfkernel_11CudfWrapper_2tenth_mm_to_inches(struct __pyx_obj_10cudfkernel_CudfWrapper *__pyx_v_self, PyObject *__pyx_v_col_index); /* proto */
+static PyObject *__pyx_pf_10cudfkernel_11CudfWrapper_2cython_tenth_mm_to_inches(struct __pyx_obj_10cudfkernel_CudfWrapper *__pyx_v_self, PyObject *__pyx_v_col_index); /* proto */
 static PyObject *__pyx_pf_10cudfkernel_11CudfWrapper_4__reduce_cython__(CYTHON_UNUSED struct __pyx_obj_10cudfkernel_CudfWrapper *__pyx_v_self); /* proto */
 static PyObject *__pyx_pf_10cudfkernel_11CudfWrapper_6__setstate_cython__(CYTHON_UNUSED struct __pyx_obj_10cudfkernel_CudfWrapper *__pyx_v_self, CYTHON_UNUSED PyObject *__pyx_v___pyx_state); /* proto */
 static int __pyx_array___pyx_pf_15View_dot_MemoryView_5array___cinit__(struct __pyx_array_obj *__pyx_v_self, PyObject *__pyx_v_shape, Py_ssize_t __pyx_v_itemsize, PyObject *__pyx_v_format, PyObject *__pyx_v_mode, int __pyx_v_allocate_buffer); /* proto */
@@ -2799,7 +2799,7 @@ static int __pyx_pf_10cudfkernel_11CudfWrapper___cinit__(struct __pyx_obj_10cudf
  *     def __cinit__(self, Table t):
  *         self.gdf = new C_CudfWrapper(t.mutable_view())             # <<<<<<<<<<<<<<
  * 
- *     def tenth_mm_to_inches(self, col_index):
+ *     def cython_tenth_mm_to_inches(self, col_index):
  */
   __pyx_t_1 = ((struct __pyx_vtabstruct_4cudf_4_lib_5table_Table *)__pyx_v_t->__pyx_vtab)->mutable_view(__pyx_v_t); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 15, __pyx_L1_error)
   __pyx_v_self->gdf = new CudfWrapper(__pyx_t_1);
@@ -2826,35 +2826,35 @@ static int __pyx_pf_10cudfkernel_11CudfWrapper___cinit__(struct __pyx_obj_10cudf
 /* "kernel.pyx":17
  *         self.gdf = new C_CudfWrapper(t.mutable_view())
  * 
- *     def tenth_mm_to_inches(self, col_index):             # <<<<<<<<<<<<<<
+ *     def cython_tenth_mm_to_inches(self, col_index):             # <<<<<<<<<<<<<<
  *         self.gdf.tenth_mm_to_inches(col_index)
  */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_10cudfkernel_11CudfWrapper_3tenth_mm_to_inches(PyObject *__pyx_v_self, PyObject *__pyx_v_col_index); /*proto*/
-static PyObject *__pyx_pw_10cudfkernel_11CudfWrapper_3tenth_mm_to_inches(PyObject *__pyx_v_self, PyObject *__pyx_v_col_index) {
+static PyObject *__pyx_pw_10cudfkernel_11CudfWrapper_3cython_tenth_mm_to_inches(PyObject *__pyx_v_self, PyObject *__pyx_v_col_index); /*proto*/
+static PyObject *__pyx_pw_10cudfkernel_11CudfWrapper_3cython_tenth_mm_to_inches(PyObject *__pyx_v_self, PyObject *__pyx_v_col_index) {
   PyObject *__pyx_r = 0;
   __Pyx_RefNannyDeclarations
-  __Pyx_RefNannySetupContext("tenth_mm_to_inches (wrapper)", 0);
-  __pyx_r = __pyx_pf_10cudfkernel_11CudfWrapper_2tenth_mm_to_inches(((struct __pyx_obj_10cudfkernel_CudfWrapper *)__pyx_v_self), ((PyObject *)__pyx_v_col_index));
+  __Pyx_RefNannySetupContext("cython_tenth_mm_to_inches (wrapper)", 0);
+  __pyx_r = __pyx_pf_10cudfkernel_11CudfWrapper_2cython_tenth_mm_to_inches(((struct __pyx_obj_10cudfkernel_CudfWrapper *)__pyx_v_self), ((PyObject *)__pyx_v_col_index));
 
   /* function exit code */
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_10cudfkernel_11CudfWrapper_2tenth_mm_to_inches(struct __pyx_obj_10cudfkernel_CudfWrapper *__pyx_v_self, PyObject *__pyx_v_col_index) {
+static PyObject *__pyx_pf_10cudfkernel_11CudfWrapper_2cython_tenth_mm_to_inches(struct __pyx_obj_10cudfkernel_CudfWrapper *__pyx_v_self, PyObject *__pyx_v_col_index) {
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   int __pyx_t_1;
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
-  __Pyx_RefNannySetupContext("tenth_mm_to_inches", 0);
+  __Pyx_RefNannySetupContext("cython_tenth_mm_to_inches", 0);
 
   /* "kernel.pyx":18
  * 
- *     def tenth_mm_to_inches(self, col_index):
+ *     def cython_tenth_mm_to_inches(self, col_index):
  *         self.gdf.tenth_mm_to_inches(col_index)             # <<<<<<<<<<<<<<
  */
   __pyx_t_1 = __Pyx_PyInt_As_int(__pyx_v_col_index); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 18, __pyx_L1_error)
@@ -2863,7 +2863,7 @@ static PyObject *__pyx_pf_10cudfkernel_11CudfWrapper_2tenth_mm_to_inches(struct 
   /* "kernel.pyx":17
  *         self.gdf = new C_CudfWrapper(t.mutable_view())
  * 
- *     def tenth_mm_to_inches(self, col_index):             # <<<<<<<<<<<<<<
+ *     def cython_tenth_mm_to_inches(self, col_index):             # <<<<<<<<<<<<<<
  *         self.gdf.tenth_mm_to_inches(col_index)
  */
 
@@ -2871,7 +2871,7 @@ static PyObject *__pyx_pf_10cudfkernel_11CudfWrapper_2tenth_mm_to_inches(struct 
   __pyx_r = Py_None; __Pyx_INCREF(Py_None);
   goto __pyx_L0;
   __pyx_L1_error:;
-  __Pyx_AddTraceback("cudfkernel.CudfWrapper.tenth_mm_to_inches", __pyx_clineno, __pyx_lineno, __pyx_filename);
+  __Pyx_AddTraceback("cudfkernel.CudfWrapper.cython_tenth_mm_to_inches", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
   __Pyx_XGIVEREF(__pyx_r);
@@ -16035,7 +16035,7 @@ static void __pyx_tp_dealloc_10cudfkernel_CudfWrapper(PyObject *o) {
 }
 
 static PyMethodDef __pyx_methods_10cudfkernel_CudfWrapper[] = {
-  {"tenth_mm_to_inches", (PyCFunction)__pyx_pw_10cudfkernel_11CudfWrapper_3tenth_mm_to_inches, METH_O, 0},
+  {"cython_tenth_mm_to_inches", (PyCFunction)__pyx_pw_10cudfkernel_11CudfWrapper_3cython_tenth_mm_to_inches, METH_O, 0},
   {"__reduce_cython__", (PyCFunction)__pyx_pw_10cudfkernel_11CudfWrapper_5__reduce_cython__, METH_NOARGS, 0},
   {"__setstate_cython__", (PyCFunction)__pyx_pw_10cudfkernel_11CudfWrapper_7__setstate_cython__, METH_O, 0},
   {0, 0, 0, 0}

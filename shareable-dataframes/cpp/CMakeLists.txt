@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
 
 project(RAPIDS-EXAMPLES VERSION 21.08.00 LANGUAGES C CXX CUDA)
 
@@ -119,7 +119,8 @@ find_and_configure_libcudacxx(${CUDF_MIN_VERSION_libcudacxx})
 # - shareable_dataframes -----------------------------------------------------------------------------
 
 add_library(shareable_dataframe SHARED
-            "src/kernel_wrapper.cu")
+            "src/kernel_wrapper.cu"
+            "src/kernel.cu")
 
 target_include_directories(shareable_dataframe PRIVATE 
                           "${CMAKE_CURRENT_SOURCE_DIR}/include"
