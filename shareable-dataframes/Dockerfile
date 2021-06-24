@@ -50,11 +50,14 @@ ENV PATH=${PATH}:/conda/bin
 # Enables "source activate conda"
 SHELL ["/bin/bash", "-c"]
 
-# Add the local shareable-dataframes code to the docker image
-ADD . /rapids/
+# Add only the conda files here so other code changes do not trigger a conda environment update
+ADD ./conda /rapids/conda/
 
 # Create shareable_dataframes conda environment
 RUN conda env create -f /rapids/conda/shareable_dataframes.yml --name shareable_dataframes
+
+# Add the shareable-dataframes code to the container
+ADD . /rapids/
 
 # Configure
 RUN source activate shareable_dataframes \
@@ -79,5 +82,5 @@ RUN source activate shareable_dataframes \
     && cd /rapids/python \
     && python setup.py build install
 
-SHELL ["/bin/bash", "-l"]
-CMD ["/bin/bash", "-l"]
+SHELL ["/bin/bash", "-c"]
+CMD ["/bin/bash", "-c"]

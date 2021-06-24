@@ -1,0 +1,15 @@
+Metadata-Version: 1.1
+Name: cudfkernel
+Version: 0.1
+Summary: UNKNOWN
+Home-page: https://github.com/rapidsai/cudf
+Author: NVIDIA Corporation
+Author-email: UNKNOWN
+License: Apache 2.0
+Description: UNKNOWN
+Platform: UNKNOWN
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Programming Language :: C++
+Classifier: Programming Language :: CUDA
+Classifier: Programming Language :: Python

@@ -1,6 +1,6 @@
-cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.20 FATAL_ERROR)
 
-project(RAPIDS-EXAMPLES VERSION 21.06.00 LANGUAGES C CXX CUDA)
+project(RAPIDS-EXAMPLES VERSION 21.08.00 LANGUAGES C CXX CUDA)
 
 # Ensure CUDA is avilable
 if(NOT CMAKE_CUDA_COMPILER)
@@ -80,9 +80,9 @@ set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -w --expt-extended-lambda --expt-relax
 # - cudf -------------------------------------------------------------------------------------------
 
 CPMFindPackage(NAME  cudf
-        VERSION         "21.06.00"
+        VERSION         "21.08.00"
         GIT_REPOSITORY  https://github.com/rapidsai/cudf.git
-        GIT_TAG         branch-21.06
+        GIT_TAG         branch-21.08
         GIT_SHALLOW     TRUE
         SOURCE_SUBDIR   cpp
         OPTIONS         "BUILD_TESTS OFF"

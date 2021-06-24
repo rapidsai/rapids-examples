@@ -1,0 +1,9 @@
+name: minifi_cudf
+channels:
+  - rapidsai
+  - nvidia
+  - rapidsai-nightly
+  - conda-forge
+dependencies:
+  - cudf=21.08.*
+  - cmake>=3.18
