@@ -24,7 +24,8 @@ __global__ void kernel_tenth_mm_to_inches(cudf::mutable_column_device_view colum
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < column.size()) {
       float existing = column.element<float>(i);
-      column.element<float>(i) = (existing * (1/10)) * mm_to_inches;
+      //column.element<float>(i) = (existing * (1/10)) * mm_to_inches;
+      column.element<float>(i) = 32.45;
     }
 }
  
