@@ -17,15 +17,13 @@
 #include "cudf/utilities/type_dispatcher.hpp"
 #include "kernel_wrapper.hpp"
 
-static constexpr float mm_to_inches = 0.0393701;
+static constexpr double mm_to_inches = 0.0393701;
 
 __global__ void kernel_tenth_mm_to_inches(cudf::mutable_column_device_view column)
 {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < column.size()) {
-      float existing = column.element<float>(i);
-      //column.element<float>(i) = (existing * (1/10)) * mm_to_inches;
-      column.element<float>(i) = 32.45;
+      column.element<double>(i) = column.element<double>(i) * mm_to_inches;
     }
 }
  
@@ -42,10 +40,11 @@ __global__ void kernel_tenth_mm_to_inches(cudf::mutable_column_device_view colum
   std::unique_ptr<cudf::mutable_column_device_view, std::function<void(cudf::mutable_column_device_view*)>> 
         mutable_device_column = cudf::mutable_column_device_view::create(mtv.column(column_index));
 
-  // auto s = cudf::get_element(mtv.column(column_index), 0);
-  // using ScalarType = cudf::scalar_type_t<int64_t>;
-  // auto typed_s     = static_cast<ScalarType const *>(s.get());
-  // printf("Value before kernel: %d\n", typed_s->value());
+  // If you need to get the value of an individual element from host code use the below code snippet
+  auto s = cudf::get_element(mtv.column(column_index), 5);
+  using ScalarType = cudf::scalar_type_t<double>;
+  auto typed_s     = static_cast<ScalarType const *>(s.get());
+  printf("Value before kernel: %f\n", typed_s->value());
  
   // Invoke the Kernel to convert tenth_mm -> inches
   kernel_tenth_mm_to_inches<<<(mtv.num_rows()+255)/256, 256>>>(*mutable_device_column);
