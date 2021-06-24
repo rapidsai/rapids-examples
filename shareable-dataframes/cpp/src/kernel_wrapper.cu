@@ -16,6 +16,17 @@
 
 #include "cudf/utilities/type_dispatcher.hpp"
 #include "kernel_wrapper.hpp"
+
+static constexpr float mm_to_inches = 0.0393701;
+
+__global__ void kernel_tenth_mm_to_inches(cudf::mutable_column_device_view column)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < column.size()) {
+      float existing = column.element<float>(i);
+      column.element<float>(i) = (existing * (1/10)) * mm_to_inches;
+    }
+}
  
  CudfWrapper::CudfWrapper(cudf::mutable_table_view table_view) {
    mtv = table_view;
@@ -30,21 +41,15 @@
   std::unique_ptr<cudf::mutable_column_device_view, std::function<void(cudf::mutable_column_device_view*)>> 
         mutable_device_column = cudf::mutable_column_device_view::create(mtv.column(column_index));
 
-  printf("Number rows in mutable_device_column: %lu\n", mutable_device_column->size());
-
-  auto s = cudf::get_element(mtv.column(column_index), 0);
-  using ScalarType = cudf::scalar_type_t<int64_t>;
-  auto typed_s     = static_cast<ScalarType const *>(s.get());
-  printf("Value before kernel: %d\n", typed_s->value());
+  // auto s = cudf::get_element(mtv.column(column_index), 0);
+  // using ScalarType = cudf::scalar_type_t<int64_t>;
+  // auto typed_s     = static_cast<ScalarType const *>(s.get());
+  // printf("Value before kernel: %d\n", typed_s->value());
  
   // Invoke the Kernel to convert tenth_mm -> inches
-  kernel_tenth_mm_to_inches<<<1, 1>>>(*mutable_device_column);
+  kernel_tenth_mm_to_inches<<<(mtv.num_rows()+255)/256, 256>>>(*mutable_device_column);
   cudaError_t err = cudaStreamSynchronize(0);
   printf("cudaStreamSynchronize Response = %d\n", (int)err);
-
-  s = cudf::get_element(mtv.column(column_index), 0);
-  typed_s     = static_cast<ScalarType const *>(s.get());
-  printf("Value after kernel: %d\n", typed_s->value()); // Value is same as before
  }
  
  CudfWrapper::~CudfWrapper() {

@@ -119,8 +119,7 @@ find_and_configure_libcudacxx(${CUDF_MIN_VERSION_libcudacxx})
 # - shareable_dataframes -----------------------------------------------------------------------------
 
 add_library(shareable_dataframe SHARED
-            "src/kernel_wrapper.cu"
-            "src/kernel.cu")
+            "src/kernel_wrapper.cu")
 
 target_include_directories(shareable_dataframe PRIVATE 
                           "${CMAKE_CURRENT_SOURCE_DIR}/include"

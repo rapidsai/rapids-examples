@@ -22,7 +22,7 @@ def read_df(weather_file_path):
         "obs_time",
     ]
     usecols = column_names[0:4]
-    dtype_map = {'station_id': 'object', 'date': 'int64', 'type': 'object', 'val': 'int64'}
+    dtype_map = {'station_id': 'object', 'date': 'int64', 'type': 'object', 'val': 'float'}
 
     # All 2010 weather recordings
     weather_df = cudf.read_csv(
