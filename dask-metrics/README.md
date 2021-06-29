@@ -22,13 +22,13 @@ After metrics have been collected, the user can use dask-metrics to calculate st
 * **`mem-util`**: the memory utilization of each GPU on a worker as a percentage of total memory available.
 * **`compute-util`**: the compute utilization of each GPU on a worker as a percentage of maximum compute ability.
 
-# How to Use
+## How to Use
 
 Existing workflows to not need to be modified to use dask-metrics. The only code that needs to be added is at the beginning and end of your workflow.
 
 Before the jobs you want to monitor are submitted to the cluster, first attach a `Monitor` to a Client object, pass it a list of metrics to track, and start it.
 ```python
-from dask-metrics import Monitor
+from dask_metrics import Monitor
 
 client = Client('[scheduler address]')  # Client connected to cluster
 monitor = Monitor(client)  # create Monitor object bound to client
@@ -44,7 +44,7 @@ After the monitor is attached and started, run any jobs just as you normally wou
 
 After you are done running everything, connect to the cluster once more to stop the monitor and export the metrics.
 ```python
-from dask-metrics import Monitor
+from dask_metrics import Monitor
 
 client = Client('[scheduler address]')  # Client connected to cluster
 monitor = Monitor(client)  # Monitor object bound to client
