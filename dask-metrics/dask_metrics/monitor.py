@@ -220,7 +220,6 @@ class SchedulerMonitor(SchedulerPlugin):
             comm.send(msg)
             
     def add_client(self, scheduler=None, client=None, **kwargs):
-        print(f"add_client{'(worker)' if self.worker_client(client) else ''}")
         if not self.worker_client(client):
             self.clients_connected[client] = len(self.jobs)
             self.jobs.append(0)
@@ -231,9 +230,7 @@ class SchedulerMonitor(SchedulerPlugin):
     
     def update_graph(self, scheduler, dsk=None, keys=None, restrictions=None, **kwargs):
         # runs every time a new dag is submitted to the cluster
-        print(f"update_graph{'(worker)' if self.worker_client(kwargs['client']) else ''}")
         if not self.worker_client(kwargs['client']):
-            print('real job')
             self.jobs[self.clients_connected[kwargs['client']]] += 1
             for key in keys:
                 self.dags.append(key)
@@ -242,7 +239,6 @@ class SchedulerMonitor(SchedulerPlugin):
         # runs every time a task changes state   
         if start == 'processing' and finish == 'memory':
             if key in self.dags:
-                print('dag finished')
                 self.dag_number += 1
                 self.dag_in_job += 1
                 self.broadcast({
@@ -251,7 +247,6 @@ class SchedulerMonitor(SchedulerPlugin):
                 })
                 
                 if self.dag_in_job == self.jobs[self.job_number]:
-                    print(f"finished job: {self.job_number}")
                     self.dag_in_job = 0 # reset dag num
                     self.job_number += 1
                     self.broadcast({
