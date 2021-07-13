@@ -10,15 +10,7 @@ ENV PATH="/root/miniconda3/bin:${PATH}"
 ARG PATH="/root/miniconda3/bin:${PATH}"
 
 # Install dev dependencies and tools
-RUN GCC_VERSION=$(bash -c '\
-CUDA_VERSION=$(nvcc --version | head -n4 | tail -n1 | cut -d" " -f5 | cut -d"," -f1); \
-CUDA_VERSION_MAJOR=$(echo $CUDA_VERSION | tr -d '.' | cut -c 1-2); \
-CUDA_VERSION_MINOR=$(echo $CUDA_VERSION | tr -d '.' | cut -c 3); \
-  if [[ "$CUDA_VERSION_MAJOR" == 9 ]]; then echo "7"; \
-  elif [[ "$CUDA_VERSION_MAJOR" == 10 ]]; then echo "8"; \
-  elif [[ "$CUDA_VERSION_MAJOR" == 11 ]]; then echo "9"; \
-  else echo "10"; \
-  fi') \
+RUN GCC_VERSION=9 \
 && apt update -y \
 && apt install -y software-properties-common \
 && add-apt-repository -y ppa:git-core/ppa \
@@ -36,9 +28,12 @@ CUDA_VERSION_MINOR=$(echo $CUDA_VERSION | tr -d '.' | cut -c 3); \
 && update-alternatives \
    --install /usr/bin/gcc gcc /usr/bin/gcc-${GCC_VERSION} 100 \
 # Set gcc-${GCC_VERSION} as the default gcc
-&& update-alternatives --set gcc /usr/bin/gcc-${GCC_VERSION}
+&& update-alternatives --set gcc /usr/bin/gcc-${GCC_VERSION} \
+&& update-alternatives \
+   --install /usr/bin/g++ g++ /usr/bin/g++-${GCC_VERSION} 100 \
+# Set gcc-${GCC_VERSION} as the default gcc
+&& update-alternatives --set g++ /usr/bin/g++-${GCC_VERSION}
 
-ARG CMAKE_VERSION=3.18.5
 
 # Install miniconda
 RUN wget \
@@ -60,11 +55,13 @@ RUN conda env create -f /rapids/conda/shareable_dataframes.yml --name shareable_
 ADD . /rapids/
 
 # Configure
+## 75->Tuning
+## check if NATIVE should fix it
 RUN source activate shareable_dataframes \
     && cmake \
     -DBUILD_TESTS=OFF \
     -DBUILD_BENCHMARKS=OFF \
-    -DCMAKE_CUDA_ARCHITECTURES= \
+    -DCMAKE_CUDA_ARCHITECTURES=75 \
     -DCMAKE_INSTALL_PREFIX=/conda/envs/shareable_dataframes \
     -S /rapids/cpp \
     -B /rapids/cpp/build
