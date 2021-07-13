@@ -1,12 +1,13 @@
-# Volta  70
-# Turing 75
-# Ampere 80
-ARG GPU_ARCH=70
 ARG CUDA_VERSION=11.1.1
 ARG LINUX_VERSION=ubuntu18.04
 FROM nvidia/cuda:${CUDA_VERSION}-devel-${LINUX_VERSION}
 
 ARG DEBIAN_FRONTEND=noninteractive
+# Set GPU Arch
+# Volta  70
+# Turing 75
+# Ampere 80
+ARG GPU_ARCH=70
 ARG PARALLEL_LEVEL=10
 ENV PARALLEL_LEVEL=10
 ENV PATH="/root/miniconda3/bin:${PATH}"
