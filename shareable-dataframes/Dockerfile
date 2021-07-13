@@ -1,6 +1,9 @@
+# Volta  70
+# Turing 75
+# Ampere 80
+ARG GPU_ARCH = 70
 ARG CUDA_VERSION=11.1.1
 ARG LINUX_VERSION=ubuntu18.04
-
 FROM nvidia/cuda:${CUDA_VERSION}-devel-${LINUX_VERSION}
 
 ARG DEBIAN_FRONTEND=noninteractive
@@ -61,7 +64,7 @@ RUN source activate shareable_dataframes \
     && cmake \
     -DBUILD_TESTS=OFF \
     -DBUILD_BENCHMARKS=OFF \
-    -DCMAKE_CUDA_ARCHITECTURES=75 \
+    -DCMAKE_CUDA_ARCHITECTURES=${GPU_ARCH} \
     -DCMAKE_INSTALL_PREFIX=/conda/envs/shareable_dataframes \
     -S /rapids/cpp \
     -B /rapids/cpp/build
