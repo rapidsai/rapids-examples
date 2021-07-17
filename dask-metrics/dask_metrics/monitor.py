@@ -1,11 +1,13 @@
 from distributed.diagnostics.plugin import SchedulerPlugin, WorkerPlugin
 from dask.distributed import Client, Scheduler
+from distributed.protocol.pickle import dumps, loads
+from distributed.core import connect
 from enum import Enum
 from threading import Event
 from pathlib import Path
+import pandas as pd
 import os
 import cudf
-import pandas
 import asyncio
 import time
 import pynvml
@@ -45,13 +47,17 @@ class Monitor():
         polling_interval : int, default 200
             The period, in milliseconds, for the monitor to wait
             between polling the GPU
-        mem_limit: int, optional
+        mem_limit : int, optional
             If set, workers will write collected metrics to disk
             every mem_limit number of readings to free up memory.
             If not set, workers will hold everything in memory
+        dump_loc : str, default 'temp'
+            If mem_limit > 0, dump_loc specifies the directory
+            on disk for each worker where temporary metrics
+            are stored
             
         Metrics tracked:
-        total-mem: int, int, int, ...
+        total-mem : int, int, int, ...
             Total memory in use at a particular point in time, in bytes,
             for each device used by worker
         mem-util : int, int, int, ...
@@ -61,7 +67,10 @@ class Monitor():
             Percentage of available compute capability utilized at a
             particular point in time for each device used by worker
         """
-        self.monitor = SchedulerMonitor(self.client, tracking=tracking, **kwargs)
+        self.monitor = SchedulerMonitor(self.client)
+        self._register_scheduler_plugin(self.monitor)
+        self.client.register_worker_plugin(WorkerMonitor(tracking, **kwargs))
+        # self.client.register_worker_plugin(WorkerPlugin())
         
     def start(self, tracking=[]):
         """
@@ -84,6 +93,8 @@ class Monitor():
             # metrics, so the old ones must be cleared
             self.metrics = []
             self.metric_state = MetricState.NONE
+        if len(self.metrics) > 0:
+            self.metric_state = MetricState.HAS_SOME
         self.send({'op': 'start_recording'}) # start collecting metrics
         
     def stop(self):
@@ -91,6 +102,13 @@ class Monitor():
         Stops the collection of metrics on all workers.
         """
         self.send({'op': 'stop_recording'})
+    
+    def shutdown(self):
+        """
+        Removes the monitor from the cluster and deletes any remaining
+        temporary files that might be left on workers.
+        """
+        self.send({'op': 'metrics_shutdown'})
         
     def request_metrics(self):
         """
@@ -117,7 +135,7 @@ class Monitor():
         self.metric_state = MetricState.NONE
         self.send({'op': 'clear_metrics'})
         
-    def to_csv(self, path, fname='metrics'):
+    def to_csv(self, path, fname='worker', clear_dir=True):
         """
         Exports currently stored metrics to designated csv files.
         
@@ -129,8 +147,18 @@ class Monitor():
         fname : str, default "metrics"
             File name prefix for each worker csv
             Ex: metrics_0.csv, metrics_1.csv, ...
+        clear_dir : bool, default True
+            Clears existing files out of the target directory
+            before writing new ones if true
         """
         self.request_metrics()
+        
+        if clear_dir:
+            for f in os.listdir(path):
+                p = os.path.join(path, f)
+                if not os.path.isdir(p):
+                    os.remove(p)
+        
         for idx, worker in enumerate(self.metrics):
             # creates file for each worker
             df = cudf.DataFrame(worker)
@@ -171,13 +199,39 @@ class Monitor():
             for i in wrk:
                 peaks.append(compute_peak(i))
             return peaks
+
+    def _register_scheduler_plugin(self, plugin):
+        ## Workaround until Client.register_scheduler_plugin()
+        ## makes its way into a stable release
+        async def coro():
+            try: # create connection to scheduler
+                comm = await connect(
+                    self.client.scheduler.address, timeout=None, **self.client.connection_args
+                )
+                comm.name = "Client->Scheduler"
+            except Exception:
+                print("failed to connect")
+
+            p = dumps(plugin, protocol=4) # serialize plugin
+            def func(dask_scheduler, plugin=None):
+                p = loads(plugin) # deserialize
+                dask_scheduler.add_plugin(p)
+                p.register_handlers(dask_scheduler)
+
+            await comm.write({
+                'op': 'run_function',
+                'function': dumps(func),
+                'kwargs': dumps({'plugin': p})
+            })
+            comm.close()
+            
+        loop = asyncio.get_event_loop()
+        task = loop.create_task(coro())
+        loop.run_until_complete(task)
         
 
 class SchedulerMonitor(SchedulerPlugin):
-    def __init__(self, client, polling_interval=200, tracking=[], mem_limit=None):
-        self.polling_interval = polling_interval/1000.0 # ms -> sec
-        self.tracking_list = tracking
-        self.mem_limit = mem_limit if (mem_limit and mem_limit > 0) else 0
+    def __init__(self, client):
         self.running = False
         self.start = 0
         self.stop = 0
@@ -188,34 +242,23 @@ class SchedulerMonitor(SchedulerPlugin):
         self.dags = []
         self.metrics = []
         self.metric_state = MetricState.NONE
-        
         self.clients_connected = {}
         
-        self.attach(client)
-    
-    def attach(self, client):
-        # adds the plugin to the scheduler of a cluster
-        self.scheduler = client.cluster.scheduler
-        self.scheduler.stream_handlers.update({
+    def register_handlers(self, scheduler):
+        self.scheduler = scheduler
+        scheduler.stream_handlers.update({
             'start_recording': self.start_recording,
             'stop_recording': self.stop_recording,
             'update_tracking': self.update_tracking,
             'report_metrics': self.recieve_metrics,
             'clear_metrics': self.clear_metrics,
             'aggregate_metrics': lambda *args, **kwargs: self.broadcast({'op': 'send_metrics'}),
-            'send_metrics': self.send_to_client
+            'send_metrics': self.send_to_client,
+            'metrics_shutdown': self.shutdown
         })
-        
-        self.scheduler.add_plugin(self)
-        options = [
-            self.polling_interval,
-            self.tracking_list,
-            self.mem_limit
-        ]
-        client.register_worker_plugin(WorkerMonitor(*options))
     
     def broadcast(self, msg, client=None):
-        # send message (usually a dict) to all workers
+        ## send message (usually a dict) to all workers
         for addr, comm in self.scheduler.stream_comms.items():
             comm.send(msg)
             
@@ -223,29 +266,30 @@ class SchedulerMonitor(SchedulerPlugin):
         if not self.worker_client(client):
             self.clients_connected[client] = len(self.jobs)
             self.jobs.append(0)
+            if self.job_number < len(self.jobs) - 1:
+                self.job_number += 1
+                self.dag_in_job = 0
+                self.broadcast({
+                    'op': 'job_num',
+                    'val': self.job_number
+                })
               
     def remove_client(self, scheduler=None, client=None, **kwargs):
         if client in self.clients_connected:
             del self.clients_connected[client]
     
     def update_graph(self, scheduler, dsk=None, keys=None, restrictions=None, **kwargs):
-        # runs every time a new dag is submitted to the cluster
+        ## runs every time a new dag is submitted to the cluster
         if not self.worker_client(kwargs['client']):
-            self.jobs[self.clients_connected[kwargs['client']]] += 1
+            client = self.clients_connected[kwargs['client']]
+            self.jobs[client] += 1
             for key in keys:
                 self.dags.append(key)
         
     def transition(self, key, start, finish, **kwargs):
-        # runs every time a task changes state   
+        ## runs every time a task changes state
         if start == 'processing' and finish == 'memory':
             if key in self.dags:
-                self.dag_number += 1
-                self.dag_in_job += 1
-                self.broadcast({
-                    'op': 'dag_num',
-                    'val': self.dag_in_job
-                })
-                
                 if self.dag_in_job == self.jobs[self.job_number]:
                     self.dag_in_job = 0 # reset dag num
                     self.job_number += 1
@@ -253,11 +297,16 @@ class SchedulerMonitor(SchedulerPlugin):
                         'op': 'job_num',
                         'val': self.job_number
                     })
+                else:
+                    self.dag_number += 1
+                    self.dag_in_job += 1
+                    self.broadcast({
+                        'op': 'dag_num',
+                        'val': self.dag_in_job
+                    })
     
     def worker_client(self, client):
-        if 'Client-worker-' in client:
-            return True
-        return False
+        return 'Client-worker-' in client
     
     def start_recording(self, **kwargs):
         self.broadcast({'op': 'start_recording'})
@@ -265,14 +314,22 @@ class SchedulerMonitor(SchedulerPlugin):
         self.start = time.time()
         self.stop = 0
         self.running = True
+        if len(self.metrics) > 0:
+            self.metric_state = MetricState.HAS_SOME
     
     def stop_recording(self, **kwargs):
         self.broadcast({'op': 'stop_recording'})
         self.stop = time.time()
         self.running = False
+    
+    def shutdown(self, **kwargs):
+        self.broadcast({'op': 'metrics_shutdown'})
+        self.stop = time.time()
+        self.running = False
+        self.scheduler.remove_plugin(self)
         
     def update_tracking(self, tracking, **kwargs):
-        # updates list of tracked metrics
+        ## updates list of tracked metrics
         self.tracking_list = tracking
         self.broadcast({
             'op': 'update_tracking',
@@ -295,14 +352,14 @@ class SchedulerMonitor(SchedulerPlugin):
             self.metric_state = MetricState.HAS_SOME if self.running else MetricState.HAS_ALL
             
     def recieve_metrics(self, metrics, **kwargs):
-        # runs when a single worker sends a metrics report
+        ## runs when a single worker sends a metrics report
         self.metrics.append(metrics)
         self.workers_not_reported -= 1
         if self.workers_not_reported == 0:
             self.event.set()
         
     async def send_to_client(self, client):
-        # sends metrics back to a specific client
+        ## sends metrics back to a specific client
         await self.pull_metrics()
         c = self.scheduler.client_comms.get(client)
         c.send({
@@ -314,21 +371,23 @@ class SchedulerMonitor(SchedulerPlugin):
     def clear_metrics(self, **kwargs):
         self.job_number = 0
         self.dag_number = 0
+        self.dag_in_job = 0
         self.metric_state = MetricState.NONE
         self.metrics = [] # clear on scheduler
         self.broadcast({'op': 'clear_metrics'}) # clear on workers
 
         
 class WorkerMonitor(WorkerPlugin):
-    def __init__(self, interval, tracking, limit):
-        # runs once before given to workers
-        self.polling_interval = interval
+    def __init__(self, tracking, polling_interval=200, mem_limit=0, dump_loc='temp'):
+        ## runs once before given to workers
+        self.metrics_on_disk = False
         self.update_tracking(tracking)
-        self.mem_limit = limit
-        self.dump_loc = 'temp'
+        self.polling_interval = polling_interval/1000.0 # ms -> sec
+        self.mem_limit = mem_limit
+        self.dump_loc = dump_loc
     
     def setup(self, worker):
-        # runs to initialize on each worker
+        ## runs to initialize on each worker
         self.worker = worker
         self.start = 0
         self.stop = 0
@@ -341,7 +400,8 @@ class WorkerMonitor(WorkerPlugin):
             'clear_metrics': self.clear_metrics,
             'job_num': self.update_job_num,
             'dag_num': self.update_dag_num,
-            'send_metrics': self.report_metrics
+            'send_metrics': self.report_metrics,
+            'metrics_shutdown': self.shutdown
         })
         
     def start_recording(self):
@@ -358,35 +418,61 @@ class WorkerMonitor(WorkerPlugin):
             self.loop.cancel() # shut down the loop
         pynvml.nvmlShutdown()
     
+    async def shutdown(self):
+        self.stop_recording()
+        self.clear_metrics(clear_disk=True)
+        await self.worker.plugin_remove(self)
+    
     def update_job_num(self, val):
         self.job_number = val
     
     def update_dag_num(self, val):
         self.dag_number = val
+    
+    @property
+    def disk_location(self):
+        ## location of dumped metrics on disk
+        return f"{self.dump_loc}/{self.worker.id}.csv"
         
     def report_metrics(self):
-        # send metrics back to scheduler
-        # TODO: read back file dumps to send in chunks
+        ## send metrics back to scheduler
+        if self.metrics_on_disk: # read back file dumps
+            report = pd.read_csv(self.disk_location)
+            report.append(pd.DataFrame(self.metrics))
+            report = report.to_dict(orient='list')
+        else:
+            report = self.metrics
+        
+        # remove weird to_dict side effect
+        if 'Unnamed: 0' in report:
+            del report['Unnamed: 0']
+        
+        # send to scheduler
         bs = self.worker.batched_stream
         bs.send({
             'op': 'report_metrics',
-            'metrics': self.metrics
+            'metrics': report
         })
     
-    def clear_metrics(self, **kwargs):
-        # clears all stored metrics
-        self.job_number = 0
-        self.dag_number = 0
+    def clear_metrics(self, clear_disk=False, clear_status=True, **kwargs):
+        ## clears all stored metrics
         self.metrics = {
             'job': [],
             'dag' : [],
             'timestamp': []
         }
         self.metrics.update({x: [] for x in self.tracking_list})
-        # TODO: clear temporary metrics on disk
+        
+        # clear temporary metrics on disk
+        if clear_disk and self.metrics_on_disk:
+            os.remove(self.disk_location)
+            self.metrics_on_disk = False
+        if clear_status:
+            self.job_number = 0
+            self.dag_number = 0
         
     def update_tracking(self, tracking, **kwargs):
-        # updates list of tracked metrics
+        ## updates list of tracked metrics
         def total_mem():
             op = lambda handle: pynvml.nvmlDeviceGetMemoryInfo(handle).used
             return self.device_info(op)
@@ -403,23 +489,26 @@ class WorkerMonitor(WorkerPlugin):
             'compute-util': compute_util
         }
         self.tracking_list = {k: v for k, v in operations.items() if k in tracking}
-        self.clear_metrics()
+        self.clear_metrics(clear_disk=True)
         
     def dump_partial(self):
-        # writes metrics in memory to disk temporarily
+        ## writes metrics in memory to disk temporarily
+        # TODO: delete on cluster shutdown ***
         Path(self.dump_loc).mkdir(parents=True, exist_ok=True)
-        path = f"{self.dump_loc}/{self.worker.id}.csv"
-        df = pandas.DataFrame(self.metrics)
+        path = self.disk_location
+        df = pd.DataFrame(self.metrics)
         
         if Path(path).is_file(): # append
             with open(path, 'a') as f:
                 df.to_csv(f, header=False)
         else: # create
             df.to_csv(path)
-        self.clear_metrics()
+            
+        self.clear_metrics(clear_status=False)
+        self.metrics_on_disk = True
     
     async def log_metrics(self):
-        # the loop that polls the gpu for metrics using pynvml
+        ## the loop that polls the gpu for metrics using pynvml
         while self.stop == 0:
             # universal metrics always tracked
             self.metrics['job'].append(self.job_number)
@@ -436,8 +525,8 @@ class WorkerMonitor(WorkerPlugin):
             await asyncio.sleep(self.polling_interval) # wait for next cycle
     
     def device_info(self, operation):
-        # applies operation over all device handles and returns
-        # a comma separated string listing the results
+        ## applies operation over all device handles and returns
+        ## a comma separated string listing the results
         handle = pynvml.nvmlDeviceGetHandleByIndex # fn alias
         device_count = pynvml.nvmlDeviceGetCount()
         results = [str(operation(handle(i))) for i in range(device_count)]
@@ -445,8 +534,8 @@ class WorkerMonitor(WorkerPlugin):
 
 
 class MetricState(Enum):
-    # Keeps track of what metrics something has
-    # or if it is in the process of gathering them
+    ## Keeps track of what metrics something has
+    ## or if it is in the process of gathering them
     NONE = 0
     GATHERING = 1
     HAS_SOME = 2

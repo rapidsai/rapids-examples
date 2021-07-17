@@ -10,6 +10,12 @@ Existing workflows do not need to be modified to take advantage of dask-metrics.
 
 After metrics have been collected, the user can use dask-metrics to calculate statistics like peak memory usage or they can export those metrics to csv files to be processed and examined elsewhere.
 
+## Installation
+
+```bash
+conda install dask-metrics -c travishester
+```
+
 ## Metrics Tracked
 
 ### Always Tracked
@@ -57,11 +63,35 @@ client.close()
 
 Important to note is that `to_csv` will create a csv file in the folder specified for *each* worker in the cluster.
 
+### Monitor.attach Parameters
+
+Parameters passed to `Monitor.attach` to configure behavior.
+
+#### Required:
+
+* **`tracking`**: list of metrics to track during run
+
+#### Optional:
+
+* **`polling_interval` (default 200)**: number of milliseconds to wait between collecting new measurements.
+* **`mem_limit`**: If set, each worker will dump metrics onto disk after `mem_limit` number of measurements to save local memory.
+* **`dump_loc` (default 'temp')**: Location on disk that each worker will store temporary metrics if `mem_limit` is set.
+
 ### Peak Memory
 
 If you want information about the peak memory utilization across the workers in your cluster, you can use `worker.peak_memory()` to get a list of workers, where each worker is represented by a list of the peak memory utilizations of the compute devices on that worker.
 
 As an example, the return value for a cluster with 2 workers and 4 GPUs on each worker would be in this format: `[[12, 8, 46, 27], [4, 0, 9, 13]]`
+
+## GPU-BDB
+
+1. Install dask-metrics on all nodes of the cluster
+2. Start the cluster and connect all the workers
+3. Connect the monitor and start recording
+4. Run the benchmark
+5. Stop the monitor and export metrics to csv
+
+Refer to [How to Use](#how-to-use) for help with starting and stopping the monitor as well as exporting the metrics once the benchmark is complete.
 
 ## Additional Information
 
