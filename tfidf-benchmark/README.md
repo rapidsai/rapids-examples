@@ -4,7 +4,7 @@
 
 For the study, we have used a subset of the [Amazon Customer Reviews Dataset](https://s3.amazonaws.com/amazon-reviews-pds/readme.html), which is a dataset of customer reviews of products available on the Amazon platform. We particularly use only the reviews of PC products in this study. The data is available in both tab separated (`tsv`) and `parquet` file format. We will use the parquet file format. For the test however, downloading the parquet files in the notebook is extremely slow. Hence we have downloaded the parquet files in the DGX box before running the tests and then read from disk in the notebooks.
 
-The dataset can be downoaded locally by the following (assuming you have `aws-cli` set up):
+The dataset can be downloaded locally by the following (assuming you have `aws-cli` set up):
 ```
 aws s3 cp s3://amazon-reviews-pds/parquet/product_category=PC/ ./data/product_category=PC/ --recursive
 ```
@@ -19,9 +19,9 @@ The following are some numbers:
 
 |                      | Overall           | Data Read       | Data Preprocessing | Hashing Vectorizer | Tf-idf Transformer | Runs |
 |----------------------|-------------------|-----------------|--------------------|--------------------|--------------------|------|
-| **Scikit-Learn**         | 1401.311 &#177; 1.498 | 29.557 &#177; 0.991 | 915.171 &#177; 0.060   | 228.228 &#177; 1.535   | 228.35 &#177; 0.89     | 2    |
-| **Apache Spark**         | 108.830 &#177; 0.677  | 0.07&#177;0.013     | 0.122 &#177; 0.009     | 0.024 &#177; 0.002     | 108.614 &#177; 0.671   | 5    |
-| **cuML + Dask (4 GPUs)** | 9.948 &#177; 1.574    | 0.804 &#177; 0.437  | 4.743 &#177; 0.650     | 3.751 &#177; 0.509     | 0.519 &#177; 0.092     | 5    |
+| Scikit-Learn         | 1180.900 &#177; 3.531 | 16.990 &#177; 0.677 | 910.171 &#177; 1.612   | 228.228 &#177; 1.535   | 13.10 &#177; 0.715     | 2    |
+| Apache Spark         | 110.309 &#177; 1.043  | 0.062 &#177; 0.001  | 0.107 &#177; 0.004     | 0.0145 &#177; 0        | 110.126 &#177; 1.048   | 5    |
+| cuML + Dask (4 GPUs) | 10.017 &#177; 1.654   | 0.742 &#177; 0.399  | 4.837 &#177; 0.476     | 3.866 &#177; 0.405     | 0.460 &#177; 0.161     | 5    |
 
 **NOTE:** The intermediate latency numbers in Apache Spark are generally garbage except the *Tf-idf Transformer* column, since that is where the computation across all partitions triggers in the lazy Spark pipeline. 
 
