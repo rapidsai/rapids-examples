@@ -73,9 +73,16 @@ Parameters passed to `Monitor.attach` to configure behavior.
 
 #### Optional:
 
+* [**`job_type` (default 'client')**](#job-number-tracking): determines the logic for tracking job numbers.
 * **`polling_interval` (default 200)**: number of milliseconds to wait between collecting new measurements.
 * **`mem_limit`**: If set, each worker will dump metrics onto disk after `mem_limit` number of measurements to save local memory.
 * **`dump_loc` (default 'temp')**: Location on disk that each worker will store temporary metrics if `mem_limit` is set.
+
+### Job Number Tracking
+
+The default logic for tracking job numbers is client-based (`job_type='client'`). This means that a job consists of the dags submitted from a single client connection. A new client connection would be a new job.
+
+You can also enable manual job number tracking (`job_type='manual'`). In this configuration, job numbers are independent of client connections. The only way to increment the job number is with a call to `new_job()` from a Monitor object. You can pass it the named argument `job` to specify a specific job number instead of just incrementing it by 1 as well.
 
 ### Peak Memory
 
@@ -96,5 +103,7 @@ Refer to [How to Use](#how-to-use) for help with starting and stopping the monit
 ## Additional Information
 
 Currently, in the case that a task submits another task to the cluster during its execution, that task will be considered part of the first when counting job and dag numbers.
+
+Included in the folder `gpu-bdb` is an example output from a gpu-bdb run on two dgx machines.
 
 Please do not hesitate to report any bugs you might find or suggest useful features.

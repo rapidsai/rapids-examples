@@ -33,7 +33,7 @@ class Monitor():
         self.event = Event()
         self.send = self.client._send_to_scheduler
         
-    def attach(self, tracking=[], **kwargs):
+    def attach(self, job_type='client', **kwargs):
         """
         Attaches plugin to scheduler and workers.
         
@@ -44,6 +44,10 @@ class Monitor():
         tracking : list[str], optional
             Sets the list of metrics to be tracked on each worker
             > See the list below of metric options
+        job_type : str, default 'client'
+            The method by which job number is tracked. 'client' will
+            link job number to client connections, while 'manual'
+            will require calls to new_job() to increment job number.
         polling_interval : int, default 200
             The period, in milliseconds, for the monitor to wait
             between polling the GPU
@@ -67,9 +71,10 @@ class Monitor():
             Percentage of available compute capability utilized at a
             particular point in time for each device used by worker
         """
-        self.monitor = SchedulerMonitor(self.client)
+        self.job_type = job_type
+        self.monitor = SchedulerMonitor(job_type)
         self._register_scheduler_plugin(self.monitor)
-        self.client.register_worker_plugin(WorkerMonitor(tracking, **kwargs))
+        self.client.register_worker_plugin(WorkerMonitor(**kwargs))
         # self.client.register_worker_plugin(WorkerPlugin())
         
     def start(self, tracking=[]):
@@ -97,11 +102,14 @@ class Monitor():
             self.metric_state = MetricState.HAS_SOME
         self.send({'op': 'start_recording'}) # start collecting metrics
         
-    def stop(self):
+    def stop(self, force=False):
         """
         Stops the collection of metrics on all workers.
         """
-        self.send({'op': 'stop_recording'})
+        self.send({
+            'op': 'stop_recording',
+            'force': force
+        })
     
     def shutdown(self):
         """
@@ -110,6 +118,24 @@ class Monitor():
         """
         self.send({'op': 'metrics_shutdown'})
         
+    def new_job(self, job=None):
+        """
+        Used to indicate which job is currently executing to the monitor. Only used
+        if job_type is set to 'manual' upon monitor startup.
+        
+        Parameters:
+        job : int, optional
+            If set, the new job number is set to the value passed to job,
+            otherwise the job number is incremented by one.
+        """
+        if self.job_type == 'manual':
+            self.send({
+                'op': 'new_job',
+                'job': job
+            })
+        else:
+            print('Manual job signalling not enabled')
+        
     def request_metrics(self):
         """
         Pulls all metrics collected until now by the workers and stores them in memory.
@@ -117,9 +143,10 @@ class Monitor():
         if self.metric_state == MetricState.HAS_ALL:
             return
         
-        def func(data, all_metrics): # callback func to recieve metrics
+        def func(data, all_metrics, successful): # callback func to recieve metrics
             self.metrics = data
             self.metric_state = MetricState.HAS_ALL if all_metrics else MetricState.HAS_SOME
+            self.successful_jobs = successful
             self.event.set()
         
         self.client._stream_handlers.update({'give_metrics': func})
@@ -199,6 +226,15 @@ class Monitor():
             for i in wrk:
                 peaks.append(compute_peak(i))
             return peaks
+        
+    def successful_jobs(self):
+        """
+        Returns an list of lists, where each list is a job and each list
+        item is a boolean value representing whether that dag finished
+        successfully or encountered an error during its execution.
+        """
+        self.request_metrics()
+        return self.successful_jobs
 
     def _register_scheduler_plugin(self, plugin):
         ## Workaround until Client.register_scheduler_plugin()
@@ -231,24 +267,35 @@ class Monitor():
         
 
 class SchedulerMonitor(SchedulerPlugin):
-    def __init__(self, client):
+    def __init__(self, job_type):
         self.running = False
         self.start = 0
         self.stop = 0
+        
         self.job_number = 0
         self.dag_number = 0
         self.dag_in_job = 0
+        
         self.jobs = []
         self.dags = []
+        self.successful_jobs = []
+        
         self.metrics = []
         self.metric_state = MetricState.NONE
         self.clients_connected = {}
+        self.jobs_done = None
+        
+        if job_type in ('client', 'manual'):
+            self.job_type = job_type
+        else:
+            raise ValueError(f"Job type must be either 'client' or 'manual'. Given: '{job_type}'")
         
     def register_handlers(self, scheduler):
         self.scheduler = scheduler
         scheduler.stream_handlers.update({
             'start_recording': self.start_recording,
             'stop_recording': self.stop_recording,
+            'new_job': self.new_job,
             'update_tracking': self.update_tracking,
             'report_metrics': self.recieve_metrics,
             'clear_metrics': self.clear_metrics,
@@ -263,16 +310,21 @@ class SchedulerMonitor(SchedulerPlugin):
             comm.send(msg)
             
     def add_client(self, scheduler=None, client=None, **kwargs):
-        if not self.worker_client(client):
+        # check for client-based job tracking logic
+        if not self.worker_client(client) and self.job_type == 'client':
             self.clients_connected[client] = len(self.jobs)
-            self.jobs.append(0)
-            if self.job_number < len(self.jobs) - 1:
+            
+            # increment job number if all dags in last job complete
+            if self.job_number == len(self.jobs) - 1 and self.dag_in_job == self.jobs[self.job_number] - 1 and len(self.jobs) != 0:
                 self.job_number += 1
                 self.dag_in_job = 0
                 self.broadcast({
-                    'op': 'job_num',
-                    'val': self.job_number
+                    'op': 'job_state',
+                    'job': self.job_number,
+                    'dag': self.dag_in_job
                 })
+            self.jobs.append(0)
+            self.successful_jobs.append([])
               
     def remove_client(self, scheduler=None, client=None, **kwargs):
         if client in self.clients_connected:
@@ -281,29 +333,62 @@ class SchedulerMonitor(SchedulerPlugin):
     def update_graph(self, scheduler, dsk=None, keys=None, restrictions=None, **kwargs):
         ## runs every time a new dag is submitted to the cluster
         if not self.worker_client(kwargs['client']):
-            client = self.clients_connected[kwargs['client']]
-            self.jobs[client] += 1
+            # check for client-based job tracking logic
+            if self.job_type == 'client':
+                if kwargs['client'] not in self.clients_connected:
+                    self.add_client(client=kwargs['client'])
+                client = self.clients_connected[kwargs['client']]
+                
+                # check if all dags in all jobs complete
+                if self.job_number == len(self.jobs) - 1 and self.dag_in_job == self.jobs[self.job_number] - 1:
+                    # must be new submission for last job, increment dag
+                    self.dag_number += 1
+                    self.dag_in_job += 1
+                    self.broadcast({
+                        'op': 'job_state',
+                        'dag': self.dag_in_job
+                    })
+                
+                self.jobs[client] += 1
+                if self.jobs_done.is_set():
+                    self.jobs_done.clear()
+            
+            # add dag key to list
             for key in keys:
                 self.dags.append(key)
         
     def transition(self, key, start, finish, **kwargs):
         ## runs every time a task changes state
-        if start == 'processing' and finish == 'memory':
+        if start == 'processing' and finish == ('memory' or 'error'):
             if key in self.dags:
-                if self.dag_in_job == self.jobs[self.job_number]:
-                    self.dag_in_job = 0 # reset dag num
-                    self.job_number += 1
-                    self.broadcast({
-                        'op': 'job_num',
-                        'val': self.job_number
-                    })
+                # check for client-based job tracking logic
+                if self.job_type == 'client':
+                    # check if all dags complete for job
+                    if self.dag_in_job == self.jobs[self.job_number] - 1:
+                        if self.job_number < len(self.jobs) - 1:
+                            # if there is another job waiting, start it
+                            self.dag_in_job = 0
+                            self.job_number += 1
+                        else:
+                            # otherwise there is no work to be done
+                            if not self.jobs_done.is_set() and len(self.clients_connected) == 0:
+                                self.jobs_done.set()
+                    else:
+                        # job not complete, keep counting dags
+                        self.dag_number += 1
+                        self.dag_in_job += 1
                 else:
+                    # manual job counting, just keep incrementing dag number
                     self.dag_number += 1
                     self.dag_in_job += 1
-                    self.broadcast({
-                        'op': 'dag_num',
-                        'val': self.dag_in_job
-                    })
+                
+                # notify workers of job state
+                self.broadcast({
+                    'op': 'job_state',
+                    'job': self.job_number,
+                    'dag': self.dag_in_job
+                })
+            self.successful_jobs[self.job_number].append(finish == 'memory')
     
     def worker_client(self, client):
         return 'Client-worker-' in client
@@ -316,8 +401,11 @@ class SchedulerMonitor(SchedulerPlugin):
         self.running = True
         if len(self.metrics) > 0:
             self.metric_state = MetricState.HAS_SOME
+        self.jobs_done = asyncio.Event()
     
-    def stop_recording(self, **kwargs):
+    async def stop_recording(self, force=False, **kwargs):
+        if not force:
+            await self.jobs_done.wait()
         self.broadcast({'op': 'stop_recording'})
         self.stop = time.time()
         self.running = False
@@ -327,6 +415,18 @@ class SchedulerMonitor(SchedulerPlugin):
         self.stop = time.time()
         self.running = False
         self.scheduler.remove_plugin(self)
+        
+    def new_job(self, job=None, **kwargs):
+        if job is not None:
+            self.job_number = job
+        else:
+            self.job_number += 1
+        self.dag_in_job = 0
+        self.broadcast({
+            'op': 'job_state',
+            'job': self.job_number,
+            'dag': self.dag_in_job
+        })
         
     def update_tracking(self, tracking, **kwargs):
         ## updates list of tracked metrics
@@ -365,7 +465,8 @@ class SchedulerMonitor(SchedulerPlugin):
         c.send({
             'op': 'give_metrics',
             'data': self.metrics,
-            'all_metrics': self.metric_state == MetricState.HAS_ALL
+            'all_metrics': self.metric_state == MetricState.HAS_ALL,
+            'successful': self.successful_jobs
         })
     
     def clear_metrics(self, **kwargs):
@@ -378,7 +479,7 @@ class SchedulerMonitor(SchedulerPlugin):
 
         
 class WorkerMonitor(WorkerPlugin):
-    def __init__(self, tracking, polling_interval=200, mem_limit=0, dump_loc='temp'):
+    def __init__(self, tracking=[], polling_interval=200, mem_limit=0, dump_loc='temp'):
         ## runs once before given to workers
         self.metrics_on_disk = False
         self.update_tracking(tracking)
@@ -398,8 +499,7 @@ class WorkerMonitor(WorkerPlugin):
             'start_recording': self.start_recording,
             'stop_recording': self.stop_recording,
             'clear_metrics': self.clear_metrics,
-            'job_num': self.update_job_num,
-            'dag_num': self.update_dag_num,
+            'job_state': self.update_job_state,
             'send_metrics': self.report_metrics,
             'metrics_shutdown': self.shutdown
         })
@@ -423,11 +523,11 @@ class WorkerMonitor(WorkerPlugin):
         self.clear_metrics(clear_disk=True)
         await self.worker.plugin_remove(self)
     
-    def update_job_num(self, val):
-        self.job_number = val
-    
-    def update_dag_num(self, val):
-        self.dag_number = val
+    def update_job_state(self, job=None, dag=None):
+        if job is not None:
+            self.job_number = job
+        if dag is not None:
+            self.dag_number = dag
     
     @property
     def disk_location(self):
