@@ -90,6 +90,29 @@ If you want information about the peak memory utilization across the workers in 
 
 As an example, the return value for a cluster with 2 workers and 4 GPUs on each worker would be in this format: `[[12, 8, 46, 27], [4, 0, 9, 13]]`
 
+## Visualization
+
+Included also are tools for visualizing the metrics you collect.
+
+There are two basic plot types: lines and boxes. Shown below is the basic syntax for plotting a job on a single worker as a line graph.
+```python
+from dask_metrics import visualize as vis
+
+job_number = 1
+vis.lines('path/to/worker/file.csv', job_number)
+```
+
+If you wanted to visualize your metrics with a box an whisker plot, you would simply use `vis.boxes` instead.
+
+Both plot types take the following parameters:
+* **`worker_file`**: The path to the csv output for the worker you wish to visualize
+* **`job`**: The number of the job you want to visualize
+* **`width` (default 20)**: The width in inches of the drawn plot
+* **`height` (default 10)**: The height in inches of the drawn plot
+* **`save` (optional)**: The path to the image file you wish to save the plot to
+
+Additionally, the box plot has the `freq` parameter (default 15), which controls the number of records included in each individual box on the plot.
+
 ## GPU-BDB
 
 1. Install dask-metrics on all nodes of the cluster
