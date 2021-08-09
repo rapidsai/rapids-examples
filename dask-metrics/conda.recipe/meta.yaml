@@ -1,0 +1,25 @@
+package:
+  name: dask-metrics
+  version: "2021.8.2"
+
+build:
+  number: 4
+  noarch: python
+
+source:
+  git_url: ../
+
+requirements:
+  build:
+    - python
+    - setuptools
+  run:
+    - python
+    - setuptools
+    - dask
+    - distributed
+    - cudf
+    - pandas
+    - nest-asyncio
+about:
+  summary: A tool for collecting metrics on distributed Dask clusters
