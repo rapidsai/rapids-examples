@@ -12,8 +12,16 @@ After metrics have been collected, the user can use dask-metrics to calculate st
 
 ## Installation
 
+Install through conda:
+
 ```bash
 conda install dask-metrics -c travishester
+```
+
+Or install through pip:
+
+```bash
+pip install .
 ```
 
 ## Metrics Tracked
@@ -40,7 +48,7 @@ client = Client('[scheduler address]')  # Client connected to cluster
 monitor = Monitor(client)  # create Monitor object bound to client
 
 # attach monitor to cluster with list of metrics to track
-monitor.attach(['mem-util', 'compute-util'])
+monitor.attach(tracking=['mem-util', 'compute-util'])
 monitor.start()  # start recording metrics
 
 client.close()
