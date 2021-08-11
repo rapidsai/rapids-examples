@@ -52,6 +52,8 @@ def scale_workers(client, n_workers, timeout=300):
 
 
 def visualize_data_cuml(path, size=(12, 8)):
+    # Returns the latencies from the cuML
+    # Plots the graph with melted dataframe
     perf_df = pd.read_csv(path)
     dd = pd.melt(perf_df,
                  id_vars=['n_workers'],
@@ -60,11 +62,15 @@ def visualize_data_cuml(path, size=(12, 8)):
                  var_name='latency')
     plt.figure(figsize=size, dpi=100, facecolor='w', edgecolor='k')
     sns.boxplot(x='latency', y='value', data=dd, orient="v", hue="n_workers")
+    plt.xlabel("Overall Latency and latencies of different stages")
+    plt.ylabel("Latency in Seconds")
     plt.show()
     return perf_df, dd
 
 
 def visualize_data(path, size=(12, 8)):
+    # Returns the latencies from the Spark and Scikit results
+    # Plots the graph with melted dataframe
     perf_df = pd.read_csv(path)
     dd = pd.melt(perf_df,
                  id_vars=['n_workers'],
@@ -73,5 +79,30 @@ def visualize_data(path, size=(12, 8)):
                  var_name='latency')
     plt.figure(figsize=size, dpi=100, facecolor='w', edgecolor='k')
     sns.boxplot(x='latency', y='value', data=dd, orient="v")
+    plt.xlabel("Overall Latency and latencies of different stages")
+    plt.ylabel("Latency in Seconds")
+    plt.show()
+    return perf_df, dd
+
+
+def visualize_data_spark_adjusted(path):
+    # Returns the adjusted dataframe with the latencies of each
+    # stage calculated from the cumulative latencies
+    perf_df = pd.read_csv(path)
+    perf_df["tfidf_transformer"] = perf_df["tfidf_transformer"] - \
+        perf_df["hashing_vectorizer"]
+    perf_df["hashing_vectorizer"] = perf_df["hashing_vectorizer"] - \
+        perf_df["data_preprocessing"]
+    perf_df["data_preprocessing"] = perf_df["data_preprocessing"] - \
+        perf_df["data_read"]
+    plt.figure(figsize=(12, 8), dpi=100, facecolor='w', edgecolor='k')
+    dd = pd.melt(perf_df,
+                 id_vars=['n_workers'],
+                 value_vars=['overall', 'data_read', 'data_preprocessing',
+                             'hashing_vectorizer', 'tfidf_transformer'],
+                 var_name='latency')
+    sns.boxplot(x='latency', y='value', data=dd, orient="v")
+    plt.xlabel("Overall Latency and latencies of different stages")
+    plt.ylabel("Latency in Seconds")
     plt.show()
     return perf_df, dd
