@@ -41,6 +41,7 @@ pip install .
 Existing workflows to not need to be modified to use dask-metrics. The only code that needs to be added is at the beginning and end of your workflow.
 
 Before the jobs you want to monitor are submitted to the cluster, first attach a `Monitor` to a Client object, pass it a list of metrics to track, and start it.
+
 ```python
 from dask_metrics import Monitor
 
@@ -57,6 +58,7 @@ client.close()
 After the monitor is attached and started, run any jobs just as you normally would.
 
 After you are done running everything, connect to the cluster once more to stop the monitor and export the metrics.
+
 ```python
 from dask_metrics import Monitor
 
@@ -81,6 +83,7 @@ Parameters passed to `Monitor.attach` to configure behavior.
 
 #### Optional:
 
+* [**`custom_metrics`**](#custom-metrics): list of custom metric functions for the monitor to track
 * [**`job_type` (default 'client')**](#job-number-tracking): determines the logic for tracking job numbers.
 * **`polling_interval` (default 200)**: number of milliseconds to wait between collecting new measurements.
 * **`mem_limit`**: If set, each worker will dump metrics onto disk after `mem_limit` number of measurements to save local memory.
@@ -103,9 +106,9 @@ As an example, the return value for a cluster with 2 workers and 4 GPUs on each 
 Included also are tools for visualizing the metrics you collect.
 
 There are two basic plot types: lines and boxes. Shown below is the basic syntax for plotting a job on a single worker as a line graph.
+
 ```python
 from dask_metrics import visualize as vis
-
 job_number = 1
 vis.lines('path/to/worker/file.csv', job_number)
 ```
@@ -121,6 +124,37 @@ Both plot types take the following parameters:
 
 Additionally, the box plot has the `freq` parameter (default 15), which controls the number of records included in each individual box on the plot.
 
+## Custom Metrics
+
+In the case that you might want to track some metric that is not provided by default, you can use custom metric functions to get the job done.
+
+Each custom metric function must take 2 arguments, even if they are unused: a `worker` object and a pynvml device `handle` (or handles).
+
+An example custom metric function that tracks power usage across GPUs in a cluster might look like this:
+
+```python
+from dask_metrics import custom_metric
+
+@custom_metric('power')
+def power_usage(worker, handle):
+    return pynvml.nvmlDeviceGetPowerUsage(handle)
+```
+
+You use the `custom_metric` decorator to indicate the name of this metric (what will show up as the column name) and whether this metric is run for all devices on a worker separately or all together at once (by setting the kwarg `per_device` in the decorator to `False`).
+
+The previous example is a case of the former and `handle` respresents a single device handle the function is run for. In the case of the latter, `handle` is actually passed a list of the pynvml device handles instead and allows you to make comparisons between all the values for each GPU at a point in time.
+
+Note that custom metric functions are also passed a reference to the `Worker` object representing each worker, giving you access to track information about task states and and anything else Dask is up to.
+
+To let your monitor know to use this custom metric function, make sure to set the `custom_metrics` argument in your call to `Monitor.attach`:
+
+```python
+monitor.attach(
+    tracking=['mem-util', 'compute-util'],
+    custom_metrics=[power_usage]
+)
+```
+
 ## GPU-BDB
 
 1. Install dask-metrics on all nodes of the cluster
@@ -134,7 +168,5 @@ Refer to [How to Use](#how-to-use) for help with starting and stopping the monit
 ## Additional Information
 
 Currently, in the case that a task submits another task to the cluster during its execution, that task will be considered part of the first when counting job and dag numbers.
-
-Included in the folder `gpu-bdb` is an example output from a gpu-bdb run on two dgx machines.
 
 Please do not hesitate to report any bugs you might find or suggest useful features.
