@@ -3,7 +3,7 @@ import numpy as np
 
 try:
     import matplotlib.pyplot as plt
-except:
+except ImportError:
     print(
         "Ensure matplotlib is installed in this environment before using visualization tools"
     )
@@ -29,7 +29,7 @@ def _get_data(worker_file, job):
 def lines(worker_file, job, width=20, height=10, save=None):
     """
     Draws a line chart with overlapping lines for each worker.
-    
+
     Parameters:
     worker_file : str
         Path to the output csv file representing a worker
@@ -70,7 +70,7 @@ def lines(worker_file, job, width=20, height=10, save=None):
 def boxes(worker_file, job, freq=5 * 3, width=20, height=10, save=None):
     """
     Draws a box and whisker plot.
-    
+
     Parameters:
     worker_file : str
         Path to the output csv file representing a worker
