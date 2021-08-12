@@ -45,11 +45,11 @@ However, one thing to note here is that since the latency of one stage will incl
 ### Results
 The following are some numbers:
 
-|                      | Overall End to End (s) | Data Read (s)       | Data Preprocessing (s) | Hashing Vectorizer (s) | Tf-idf Transformer (s) | Sample <br>Runs |
+|                      | Overall End to End (s) | Data Read (s)       | Data Preprocessing (s) | Hashing Vectorizer (s) | Tf-idf Transformer (s) | Sample Runs |
 |----------------------|:------------------:|-----------------|--------------------|--------------------|--------------------|-----------------|
-| Scikit-Learn         | 2115.102 +- 11.36  | 27.855 +- 1.564 | 1241.118 +- 1.476  | 722.189 +- 8.656   | 123.780 +- 3.381   | 3               |
-| Apache Spark         | 482.556 +- 7.499   | 7.324 +- 4.444  | 84.52 +- 4.60      | 140.562 +- 26.04   | 257.355 +- 19.288  | 5               |
-| cuML + Dask (6 GPUs) | 25.058 +- 1.170    | 2.142 +- 0.093  | 7.467 +- 0.227     | 7.196 +- 0.276     | 2.872 +- 0.690     | 5               |
+| Scikit-Learn         | 2115.102 &#177; 11.36  | 27.855 &#177; 1.564 | 1241.118 &#177; 1.476  | 722.189 &#177; 8.656   | 123.780 &#177; 3.381   | 3               |
+| Apache Spark         | 482.556 &#177; 7.499   | 7.324 &#177; 4.444  | 84.52 &#177; 4.60      | 140.562 &#177; 26.04   | 257.355 &#177; 19.288  | 5               |
+| cuML + Dask 6GPUs | 25.058 &#177; 1.170    | 2.142 &#177; 0.093  | 7.467 &#177; 0.227     | 7.196 &#177; 0.276     | 2.872 &#177; 0.690     | 5               |
 
 ---
 

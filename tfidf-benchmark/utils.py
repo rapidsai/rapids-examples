@@ -55,6 +55,7 @@ def visualize_data_cuml(path, size=(12, 8)):
     # Returns the latencies from the cuML
     # Plots the graph with melted dataframe
     perf_df = pd.read_csv(path)
+    perf_df = perf_df.loc[:, ~perf_df.columns.str.contains('^Unnamed:')]
     dd = pd.melt(perf_df,
                  id_vars=['n_workers'],
                  value_vars=['overall', 'data_read', 'data_preprocessing',
@@ -72,6 +73,7 @@ def visualize_data(path, size=(12, 8)):
     # Returns the latencies from the Spark and Scikit results
     # Plots the graph with melted dataframe
     perf_df = pd.read_csv(path)
+    perf_df = perf_df.loc[:, ~perf_df.columns.str.contains('^Unnamed:')]
     dd = pd.melt(perf_df,
                  id_vars=['n_workers'],
                  value_vars=['overall', 'data_read', 'data_preprocessing',
@@ -89,6 +91,7 @@ def visualize_data_spark_adjusted(path):
     # Returns the adjusted dataframe with the latencies of each
     # stage calculated from the cumulative latencies
     perf_df = pd.read_csv(path)
+    perf_df = perf_df.loc[:, ~perf_df.columns.str.contains('^Unnamed:')]
     perf_df["tfidf_transformer"] = perf_df["tfidf_transformer"] - \
         perf_df["hashing_vectorizer"]
     perf_df["hashing_vectorizer"] = perf_df["hashing_vectorizer"] - \
