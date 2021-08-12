@@ -11,16 +11,16 @@ aws s3 cp s3://amazon-reviews-pds/parquet/product_category=Books/ ./data/product
 ```
 The size of the compressed parquet files on disk is ~11GB. The total number of rows with reviews is around 21 million (20,725,971). 
 
-We have the following 3 notebooks:
-1. [`NLP-pipeline-sklearn.ipynb`](./NLP-pipeline-sklearn.ipynb) is the standard single CPU `sklearn` pipeline. This is a baseline.
-2. [`NLP-pipeline-spark.ipynb`](./NLP-pipeline-spark.ipynb) is the multi CPU `spark` pipeline. Here, we allow the Spark cluster to use all the 80 CPU cores of the DGX box. 
-3. [`NLP-pipeline-cuML.ipynb`](./NLP-pipeline-cuML.ipynb) is the standard multi GPU `cuML` pipeline leveraging Dask. We do a  strong scaling test using 2, 4, 6 and 8 (32GB V100) GPUs on a single DGX box.
+We have the following 3 notebooks for this benchmark:
+1. [`NLP-pipeline-sklearn.ipynb`](./NLP-pipeline-sklearn.ipynb) is the standard single CPU `sklearn` pipeline. 
+2. [`NLP-pipeline-spark.ipynb`](./NLP-pipeline-spark.ipynb) is the multi CPU `spark` pipeline. 
+3. [`NLP-pipeline-cuML.ipynb`](./NLP-pipeline-cuML.ipynb) is the standard multi GPU `cuML` pipeline leveraging Dask. We also perform a  strong scaling test using 2, 4, 6 and 8 (32GB V100) GPUs on a single DGX box.
 
 ### System Setup
-We test all of the 3 pipelines in an NVIDIA DGX box with 8x 32GB V100 GPUs, 80 CPU cores and 1TB system memory. 
+We test all of the 3 pipelines in an NVIDIA DGX box with 8x 32GB V100 GPUs, 80 virtual cores (40 physical cores) and 1TB system memory. 
 
 - **scikit-learn**: Scikit will leverage only the CPUs using rudimentary parallelism. We primarily use this as a baseline. 
-- **Apache Spark**: We allow the Spark cluster to use all the 80 (Intel Xeon E5-2698) CPU cores of the DGX box and all available memory. Note: the dataset is obviously much much smaller than the system memory. 
+- **Apache Spark**: We allow the Spark cluster to use all the 80 (Intel Xeon E5-2698) virtual CPU cores of the DGX box and all available memory. Note: the dataset is obviously much much smaller than the system memory. 
 - **cuML + Dask**: For the benchmark comparison, we allocate 6x V100 GPUs to our local Dask cuda cluster. Further, for the strong scaling performance testing, we allocate 2,4,6,and 8 GPUs for separate runs. In Dask, we configure each worker to have a single GPU. So with 6 GPUs allocated to the Dask cluster, we would have 6 workers, each with a single GPU.  
 
 Note: All tests are done on a bare-metal server with RAPIDS 21.08a conda environment (https://rapids.ai/start.html) . The PySpark version we have used is 3.1.2.
