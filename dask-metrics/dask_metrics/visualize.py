@@ -9,24 +9,28 @@ except ImportError:
     )
 
 
-def _get_data(worker_file, job):
+def _get_data(worker_file, job, metrics):
     df = cudf.read_csv(worker_file)
-    col = df[df["job"] == job]
+    section = df[df["job"] == job]
 
-    compute = col["compute-util"].str.split(pat=", ")
-    compute = compute.to_arrow().to_pylist()
-    compute = cudf.DataFrame(compute, dtype="int16")
-    compute.insert(0, "timestamp", df["timestamp"])
+    sections = []
+    for metric in metrics:
+        if metric not in section:
+            raise ValueError(
+                f"The requested metric '{metric}' was not found in the provided file"
+            )
 
-    memory = col["mem-util"].str.split(pat=", ")
-    memory = memory.to_arrow().to_pylist()
-    memory = cudf.DataFrame(memory, dtype="int16")
-    memory.insert(0, "timestamp", df["timestamp"])
+        m = section[metric].str.split(pat=", ")
+        m = m.to_arrow().to_pylist()
+        m = cudf.DataFrame(m, dtype="int64")
+        m.insert(0, "timestamp", df["timestamp"])
+        m._metric_name = metric
+        sections.append(m)
 
-    return compute, memory
+    return sections
 
 
-def lines(worker_file, job, width=20, height=10, save=None):
+def lines(worker_file, job, metrics, width=20, height=10, save=None):
     """
     Draws a line chart with overlapping lines for each worker.
 
@@ -35,6 +39,8 @@ def lines(worker_file, job, width=20, height=10, save=None):
         Path to the output csv file representing a worker
     job : int
         Job in run to plot
+    metrics : list
+        The list of metric names to plot
     freq : int, default 15
         The number of records included in each individual box on the plot
     width : int, default 20
@@ -44,30 +50,33 @@ def lines(worker_file, job, width=20, height=10, save=None):
     save : str, optional
         Saves an image of the plot at the specified path if set
     """
-    compute, memory = _get_data(worker_file, job)
+    sections = _get_data(worker_file, job, metrics)
 
     plt.close("all")
-    fig, axes = plt.subplots(nrows=2, sharex=True)
-    compute.to_pandas().plot(
-        ax=axes[0],
-        title="Compute Utilization (%)",
-        x="timestamp",
-        y=range(8),
-        figsize=(width, height),
-    )
-    memory.to_pandas().plot(
-        ax=axes[1],
-        title="Memory Utilization (%)",
-        x="timestamp",
-        y=range(8),
-        figsize=(width, height),
-    )
+    fig, axes = plt.subplots(nrows=len(sections), sharex=True)
+
+    i = 0
+    for section in sections:
+        try:
+            axis = axes[i]
+        except:
+            axis = axes
+
+        plot = section.to_pandas().plot(
+            ax=axis,
+            title=section._metric_name,
+            x="timestamp",
+            y=range(len(section.columns) - 1),
+            figsize=(width, height),
+            alpha=0.5,
+        )
+        i += 1
 
     if save is not None:
         plt.savefig(save, bbox_inches="tight")
 
 
-def boxes(worker_file, job, freq=5 * 3, width=20, height=10, save=None):
+def boxes(worker_file, job, metrics, freq=5 * 3, width=20, height=10, save=None):
     """
     Draws a box and whisker plot.
 
@@ -76,6 +85,8 @@ def boxes(worker_file, job, freq=5 * 3, width=20, height=10, save=None):
         Path to the output csv file representing a worker
     job : int
         Job in run to plot
+    metrics : list
+        The list of metric names to plot
     freq : int, default 15
         The number of records included in each individual box on the plot
     width : int, default 20
@@ -85,7 +96,7 @@ def boxes(worker_file, job, freq=5 * 3, width=20, height=10, save=None):
     save : str, optional
         Saves an image of the plot at the specified path if set
     """
-    compute, memory = _get_data(worker_file, job)
+    sections = _get_data(worker_file, job, metrics)
 
     def process_data(data):
         timestamp = data["timestamp"][::freq].round(2)
@@ -113,17 +124,42 @@ def boxes(worker_file, job, freq=5 * 3, width=20, height=10, save=None):
         return df
 
     plt.close("all")
-    fig, axes = plt.subplots(nrows=2, sharex=True)
+    fig, axes = plt.subplots(nrows=len(sections), sharex=True, figsize=(width, height))
 
-    compute = process_data(compute).to_pandas()
-    compute.plot.box(
-        title="Compute Utilization (%)", ax=axes[0], figsize=(width, height), fontsize=8
-    )
+    i = 0
+    for section in sections:
+        try:
+            axis = axes[i]
+        except:
+            axis = axes
 
-    memory = process_data(memory).to_pandas()
-    axes[1].boxplot(memory)
-    axes[1].set_title("Memory Utilization (%)")
-    plt.xticks(list(range(1, len(compute.columns) + 1)), compute.columns, rotation=45)
+        # plot content
+        axis.set_title(section._metric_name)
+        section = process_data(section).to_pandas()
+        bp = axis.boxplot(section)
+        plt.xticks(
+            list(range(1, len(section.columns) + 1)), section.columns, rotation=45
+        )
+
+        # formatting
+        colors = ["#aec6cf", "#cedde2", "#cfb7ae"]
+
+        for box in bp["boxes"]:
+            box.set(color=colors[0])
+
+        for whisker in bp["whiskers"]:
+            whisker.set(color=colors[1], linewidth=3, linestyle=":")
+
+        for cap in bp["caps"]:
+            cap.set(color=colors[2], linewidth=2)
+
+        for median in bp["medians"]:
+            median.set(color=colors[2], linewidth=2)
+
+        for flier in bp["fliers"]:
+            flier.set(marker="D", color=colors[0], alpha=0.5)
+
+        i += 1
 
     if save is not None:
         plt.savefig(save, bbox_inches="tight")

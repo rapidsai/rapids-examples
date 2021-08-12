@@ -110,7 +110,8 @@ There are two basic plot types: lines and boxes. Shown below is the basic syntax
 ```python
 from dask_metrics import visualize as vis
 job_number = 1
-vis.lines('path/to/worker/file.csv', job_number)
+metrics = ['compute-util', 'mem-util']
+vis.lines('path/to/worker/file.csv', job_number, metrics)
 ```
 
 If you wanted to visualize your metrics with a box an whisker plot, you would simply use `vis.boxes` instead.
@@ -118,6 +119,7 @@ If you wanted to visualize your metrics with a box an whisker plot, you would si
 Both plot types take the following parameters:
 * **`worker_file`**: The path to the csv output for the worker you wish to visualize
 * **`job`**: The number of the job you want to visualize
+* [**`metrics`**](#metrics-tracked): The list of metric names you want to plot
 * **`width` (default 20)**: The width in inches of the drawn plot
 * **`height` (default 10)**: The height in inches of the drawn plot
 * **`save` (optional)**: The path to the image file you wish to save the plot to
