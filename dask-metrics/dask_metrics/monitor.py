@@ -216,7 +216,7 @@ class Monitor:
         """
         self.request_metrics()
         return Monitor._peaks(self.metrics, metric, **kwargs)
-    
+
     @classmethod
     def peaks_from_csv(cls, csv_dir, metric, **kwargs):
         """
@@ -243,35 +243,33 @@ class Monitor:
         """
         data = []
         workers = {}
-        for file in os.listdir(csv_dir):   
+        for file in os.listdir(csv_dir):
             if file.endswith(".csv"):
                 worker = pd.read_csv(os.path.join(csv_dir, file))
                 worker = worker.to_dict(orient="list")
-                
+
                 number = re.match(r".+_(\d+).csv", file).group(1)
                 workers[number] = worker
-        
+
         workers = OrderedDict(sorted(workers.items()))
         for k, v in workers.items():
             data.append(v)
-        
+
         return Monitor._peaks(data, metric, **kwargs)
-    
+
     @staticmethod
     def _peaks(data, metric, workers=None, per_job=True):
         def compute_peak(idx):
             # computes peak utilization for single worker
             df = cudf.DataFrame(data[idx])
             if metric not in df.columns:
-                raise KeyError(
-                    f"Worker needs '{metric}' tracked to compute peaks"
-                )
+                raise KeyError(f"Worker needs '{metric}' tracked to compute peaks")
 
             if per_job:
                 jobs = {}
-                for i in df['job'].unique().to_arrow().to_pylist():
-                    chunk = df[df['job'] == i]
-                    
+                for i in df["job"].unique().to_arrow().to_pylist():
+                    chunk = df[df["job"] == i]
+
                     col = chunk[metric].str.split(pat=", ")
                     col = col.to_arrow().to_pylist()
                     devices = cudf.DataFrame(col)
@@ -294,7 +292,7 @@ class Monitor:
             for i in wrk:
                 peaks.append(compute_peak(i))
             return peaks
-        
+
     def successful_jobs(self):
         """
         Returns an list of lists, where each list is a job and each list
