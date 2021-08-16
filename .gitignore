@@ -18,6 +18,12 @@ thirdparty/MiNiFi/corecomponentstate
 thirdparty/MiNiFi/flowfile_repository
 thirdparty/MiNiFi/logs
 
+# Ignore Dask generated files
+dask-metrics/dask_metrics/dask-worker-space
+
+# Ignore jupyer notebook artifacts
+.ipynb_checkpoints
+
 .cache
 .vscode
 
