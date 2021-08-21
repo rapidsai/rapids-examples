@@ -13,13 +13,18 @@ def _get_data(worker_file, job, metrics):
     df = cudf.read_csv(worker_file)
     section = df[df["job"] == job]
 
+    if len(section) == 0:
+        raise ValueError(
+            f"The requested job '{job}' was not found in the provided file"
+        )
+
     sections = []
     for metric in metrics:
         if metric not in section:
             raise ValueError(
                 f"The requested metric '{metric}' was not found in the provided file"
             )
-
+ 
         m = section[metric].str.split(pat=", ")
         m = m.to_arrow().to_pylist()
         m = cudf.DataFrame(m, dtype="int64")

@@ -1,9 +1,9 @@
 package:
   name: dask-metrics
-  version: "2021.8.12"
+  version: "2021.8.20"
 
 build:
-  number: 0
+  number: 2
   noarch: python
 
 source:
