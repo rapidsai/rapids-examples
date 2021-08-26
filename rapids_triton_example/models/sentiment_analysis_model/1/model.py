@@ -58,15 +58,13 @@ class TritonPythonModel:
 
         self.device = torch.device("cuda:{}".format(self.model_instance_device_id) if torch.cuda.is_available() else "cpu")
         
-        ### Load saved model
         model = BERT_Arch()
         
-        #  load model weights path
-        # m_p = Path(__file__).with_name('model.pt')
-        # weights = torch.load(m_p)
-        # model.load_state_dict(torch.load(m_p))    
+        # Load saved model
+        m_p = Path(__file__).with_name('model.pt')
+        model.load_state_dict(torch.load(m_p))    
+        
         model = model.eval()
-        # Instantiate the PyTorch model
         self.model = model.to(self.device)
 
     def execute(self, requests):
