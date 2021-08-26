@@ -1,25 +1,39 @@
-# Copyright (c) 2020-201, NVIDIA CORPORATION. All rights reserved.
-
-import numpy as np
-import sys
+# Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
 import json
-from pathlib import Path
-
-# triton_python_backend_utils is available in every Triton Python model. You
-# need to use this module to create inference requests and responses. It also
-# contains some utility functions for extracting information from model_config
-# and converting Triton input/output types to numpy types.
-
-
+from torch import nn
+import torch
 import triton_python_backend_utils as pb_utils
+from pathlib import Path
+from transformers import BertModel
 
+class BERT_Arch(nn.Module):
+    def __init__(self):
+        super(BERT_Arch, self).__init__()
+        self.bert = BertModel.from_pretrained('bert-base-uncased')
+        self.dropout = nn.Dropout(0.1)
+        self.relu =  nn.ReLU()
+        self.fc1 = nn.Linear(768,512)
+        self.fc2 = nn.Linear(512,2)
+        self.softmax = nn.LogSoftmax(dim=1)
+        
+    #define the forward pass
+    def forward(self, sent_id, mask):
+        #pass the inputs to the model  
+        _, cls_hs = self.bert(sent_id, attention_mask=mask, return_dict=False)
+        x = self.fc1(cls_hs)
+        x = self.relu(x)
+        x = self.dropout(x)
+        # output layer
+        x = self.fc2(x)
+        # apply softmax activation
+        x = self.softmax(x)
+        return x
 
 
 class TritonPythonModel:
     """Your Python model must use the same class name. Every Python model
     that is created must have "TritonPythonModel" as the class name.
     """
-
     def initialize(self, args):
         """`initialize` is called only once when the model is being loaded.
         Implementing `initialize` function is optional. This function allows
@@ -38,30 +52,32 @@ class TritonPythonModel:
         """
 
         # You must parse model_config. JSON string is not parsed here
-        self.model_config  = json.loads(args['model_config'])
+        self.model_config = model_config = json.loads(args['model_config'])
         self.model_instance_device_id  = json.loads(args['model_instance_device_id'])
-        import numba.cuda as cuda
-        cuda.select_device(self.model_instance_device_id)
-        import cudf
-        from cudf.core.subword_tokenizer import SubwordTokenizer
+
+
+        self.device = torch.device("cuda:{}".format(self.model_instance_device_id) if torch.cuda.is_available() else "cpu")
         
-        # get vocab
-        v_p = Path(__file__).with_name('vocab_hash.txt')
+        ### Load saved model
+        model = BERT_Arch()
         
-        
-        self.cudf_tokenizer = SubwordTokenizer(v_p, do_lower_case=True)
-        self.cudf_lib = cudf
-        self.seq_len = 256
+        #  load model weights path
+        # m_p = Path(__file__).with_name('model.pt')
+        # weights = torch.load(m_p)
+        # model.load_state_dict(torch.load(m_p))    
+        model = model.eval()
+        # Instantiate the PyTorch model
+        self.model = model.to(self.device)
 
     def execute(self, requests):
-        """`execute` MUST be implemented in every Python model. `execute`
+        """`execute` must be implemented in every Python model. `execute`
         function receives a list of pb_utils.InferenceRequest as the only
-        argument. This function is called when an inference request is made
+        argument. This function is called when an inference is requested
         for this model. Depending on the batching configuration (e.g. Dynamic
         Batching) used, `requests` may contain multiple requests. Every
         Python model, must create one pb_utils.InferenceResponse for every
         pb_utils.InferenceRequest in `requests`. If there is an error, you can
-        set the error argument when creating a pb_utils.InferenceResponse
+        set the error argument when creating a pb_utils.InferenceResponse.
 
         Parameters
         ----------
@@ -75,36 +91,28 @@ class TritonPythonModel:
           be the same as `requests`
         """
 
+
         responses = []
 
         # Every Python backend must iterate over everyone of the requests
         # and create a pb_utils.InferenceResponse for each of them.
         for request in requests:
             # Get INPUT0
-            raw_strings = pb_utils.get_input_tensor_by_name(request, "product_reviews").as_numpy()
-            str_ls = [s.decode() for s in raw_strings]
-            str_series = self.cudf_lib.Series(str_ls)
+            input_ids = pb_utils.get_input_tensor_by_name(request, "input_ids")
+            attention_mask = pb_utils.get_input_tensor_by_name(request, "attention_mask")
+            ### Wont Need below conversion in newer releases
+            ### see PR https://github.com/triton-inference-server/python_backend/pull/62
+            input_ids = torch.Tensor(input_ids.as_numpy()).long().to(self.device)
+            attention_mask = torch.Tensor(attention_mask.as_numpy()).long().to(self.device)
             
-            ### Use RAPIDS
-            cudf_output = self.cudf_tokenizer(str_series,
-                    max_length=self.seq_len,
-                    max_num_rows=len(str_series),
-                    padding="max_length",
-                    return_tensors="cp",
-                    truncation=True,
-                    add_special_tokens=False)
-    
+            with torch.no_grad():
+                outputs = self.model(input_ids, attention_mask)
+                conf, preds = torch.max(outputs, dim=1)
+
             # Create output tensors. You need pb_utils.Tensor
             # objects to create pb_utils.InferenceResponse.
+            out_tensor_0 = pb_utils.Tensor("preds", preds.cpu().numpy())
             
-            ### Wont need .get() conversion in newer releases
-            ### see PR https://github.com/triton-inference-server/python_backend/pull/62
-            
-            out_tensor_0 = pb_utils.Tensor("input_ids", cudf_output['input_ids'].get().astype(np.int32))
-            out_tensor_1 = pb_utils.Tensor("attention_mask", cudf_output['attention_mask'].get().astype(np.int32))
-            out_tensor_2 = pb_utils.Tensor("metadata", cudf_output['metadata'].get().astype(np.int32))
-            
-
             # Create InferenceResponse. You can set an error here in case
             # there was a problem with handling this inference request.
             # Below is an example of how you can set errors in inference
@@ -112,8 +120,7 @@ class TritonPythonModel:
             #
             # pb_utils.InferenceResponse(
             #    output_tensors=..., TritonError("An error occured"))
-            inference_response = pb_utils.InferenceResponse(
-                output_tensors=[out_tensor_0, out_tensor_1,out_tensor_2])
+            inference_response = pb_utils.InferenceResponse(output_tensors=[out_tensor_0])
             responses.append(inference_response)
 
         # You should return a list of pb_utils.InferenceResponse. Length
@@ -122,7 +129,7 @@ class TritonPythonModel:
 
     def finalize(self):
         """`finalize` is called only once when the model is being unloaded.
-        Implementing `finalize` function is OPTIONAL. This function allows
+        Implementing `finalize` function is optional. This function allows
         the model to perform any necessary clean ups before exit.
         """
         print('Cleaning up...')

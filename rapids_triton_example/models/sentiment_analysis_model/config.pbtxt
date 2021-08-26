@@ -1,30 +1,25 @@
 # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
-name: "rapids_tokenizer"
+
+name: "sentiment_analysis_model"
 backend: "python"
+
 input [
  {
-    name: "product_reviews"
-    data_type: TYPE_STRING
-    dims: [-1]
-  }
-]
-output [
-   {
     name: "input_ids"
     data_type: TYPE_INT32
     dims: [ -1, 256]
   },
-  
-   {
+  {
     name: "attention_mask"
     data_type: TYPE_INT32
     dims: [-1, 256]
-  },
-   {
-    name: "metadata"
-    data_type: TYPE_INT32
-    dims: [ -1, 3]
   }
 ]
-
+output [
+  {
+    name: "preds"
+    data_type: TYPE_INT64
+    dims: [ -1]
+  }
+]
 instance_group [{ kind: KIND_GPU }]

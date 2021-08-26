@@ -9,7 +9,7 @@ Check out the Triton documentation at [link](https://github.com/triton-inference
 
 We use Triton's [python backend](https://github.com/triton-inference-server/python_backend), which allows you to serve Python "models" that can execute arbitrary python (and thus RAPIDS) code.
 
-Here we showcase a simple example of using RAPIDS with Triton.
+Here we showcase a simple example of using RAPIDS+Pytorch with Triton.
 
 ## Build 
 
@@ -20,12 +20,23 @@ bash build.sh
 ```
 
 
-### Model Code
-The example "model" here does tokenization of string logs into numerical vectors using `cuDF's subwordTokenizer.`  
+### Model 
 
-Python model code is present in [models/rapids_tokenizer/1/model.py](models/rapids_tokenizer/1/model.py)
+<img src="notebook_images/ensemble_rapids_simple.jpg" width="300" height="400">
 
-The model configuration is defined in [models/rapids_tokenizer/config.pbtxt](models/rapids_tokenizer/config.pbtxt)
+1. Tokenization of strings  into numerical vectors using `cuDF's subwordTokenizer.`
+
+- Tokenization model code is present in [models/rapids_tokenizer/1/model.py](models/rapids_tokenizer/1/model.py)
+- Tokenization model configuration is defined in [models/rapids_tokenizer/config.pbtxt](models/rapids_tokenizer/config.pbtxt)
+
+2. Sentiment Prediction using Pytorch model
+
+- Sentiment model code is present in [models/sentiment_analysis_model/1/model.py](models/sentiment_analysis_model/1/model.py)
+- Tokenization model configuration is defined in [models/sentiment_analysis_model/config.pbtxt](models/sentiment_analysis_model/config.pbtxt)
+
+
+3. Ensemble Model Configuration is present in [models/end_to_end_model/config.pbtxt](models/end_to_end_model/config.pbtxt)
+
 
 
 ## Serving
