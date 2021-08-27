@@ -1,0 +1,51 @@
+name: "end_to_end_model"
+platform: "ensemble"
+max_batch_size: 128
+input [
+  {
+    name: "product_reviews"
+    data_type: TYPE_STRING
+    dims: [ -1 ]
+  }
+]
+output [
+  {
+    name: "preds"
+    data_type: TYPE_INT64
+    dims: [ -1]
+  }
+]
+
+ensemble_scheduling {
+  step [
+    {
+      model_name: "rapids_tokenizer"
+      model_version: 1
+      input_map {  key: "product_reviews"
+        value: "product_reviews"
+      }
+      output_map {  key: "input_ids"
+        value: "input_ids"
+      }
+      output_map {  key: "attention_mask"
+                value: "attention_mask"
+      }
+    },
+    {
+      model_name: "sentiment_analysis_model"
+      model_version: 1
+      input_map {
+        key: "input_ids"
+        value: "input_ids"
+      }
+      input_map {
+      key: "attention_mask"
+      value: "attention_mask"
+      }
+      output_map {
+      key: "preds"
+      value: "preds"
+      }
+    }
+  ]
+}

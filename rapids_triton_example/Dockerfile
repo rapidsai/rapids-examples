@@ -6,7 +6,7 @@ RUN cd /opt/nvidia && wget https://repo.continuum.io/miniconda/Miniconda3-latest
 ENV PATH="/root/miniconda3/bin:$PATH"
 RUN conda init bash \ 
      && . ~/.bashrc \ 
-     && conda create -n rapids -c rapidsai-nightly -c nvidia -c conda-forge cudf python=3.8 cudatoolkit=11.2 
+     && conda create -n rapids -c rapidsai-nightly -c pytorch -c nvidia  -c conda-forge cudf pytorch=1.7.1 transformers python=3.8 cudatoolkit=11.0
 
 
 COPY ./entrypoint.sh ./entrypoint.sh
