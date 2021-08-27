@@ -20,19 +20,19 @@ bash build.sh
 ```
 
 
-### Model 
+## Model 
 
 <img src="notebook_images/ensemble_rapids_simple.jpg" width="300" height="400">
 
 1. Tokenization of strings  into numerical vectors using `cuDF's subwordTokenizer.`
 
-- Tokenization model code is present in [models/rapids_tokenizer/1/model.py](models/rapids_tokenizer/1/model.py)
-- Tokenization model configuration is defined in [models/rapids_tokenizer/config.pbtxt](models/rapids_tokenizer/config.pbtxt)
+    - Tokenization model code is present in [models/rapids_tokenizer/1/model.py](models/rapids_tokenizer/1/model.py)
+    - Tokenization model configuration is defined in [models/rapids_tokenizer/config.pbtxt](models/rapids_tokenizer/config.pbtxt)
 
 2. Sentiment Prediction using Pytorch model
 
-- Sentiment model code is present in [models/sentiment_analysis_model/1/model.py](models/sentiment_analysis_model/1/model.py)
-- Tokenization model configuration is defined in [models/sentiment_analysis_model/config.pbtxt](models/sentiment_analysis_model/config.pbtxt)
+    - Sentiment model code is present in [models/sentiment_analysis_model/1/model.py](models/sentiment_analysis_model/1/model.py)
+    - Sentiment model configuration is defined in [models/sentiment_analysis_model/config.pbtxt](models/sentiment_analysis_model/config.pbtxt)
 
 
 3. Ensemble Model Configuration is present in [models/end_to_end_model/config.pbtxt](models/end_to_end_model/config.pbtxt)
