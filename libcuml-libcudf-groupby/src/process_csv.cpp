@@ -39,10 +39,10 @@ std::unique_ptr<cudf::table> cuml_regression_on_groupby(cudf::table_view stock_i
 int main(int argc, char** argv)
 {
   // Read data
-  auto stock_table_with_metadata = read_csv("test.csv");
+  auto sample_table = read_csv("test.csv");
 
   // Process
-  auto result = cuml_regression_on_groupby(*stock_table_with_metadata.tbl);
+  auto result = cuml_regression_on_groupby(*sample_table.tbl);
 
   // Write out result
   write_csv(*result, "test_out.csv");
