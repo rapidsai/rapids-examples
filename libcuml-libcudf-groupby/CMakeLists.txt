@@ -14,8 +14,18 @@ CPMFindPackage(NAME  cudf
     SOURCE_SUBDIR   cpp
 )
 
+set(CUDF_TAG branch-21.10)
+CPMFindPackage(NAME  cuml
+    GIT_REPOSITORY  https://github.com/rapidsai/cuml
+    GIT_TAG         ${CUDF_TAG}
+    GIT_SHALLOW     TRUE
+    SOURCE_SUBDIR   cpp
+)
 
 # Configure your project here
 add_executable(basic_example src/process_csv.cpp)
-target_link_libraries(basic_example PRIVATE cudf::cudf)
+target_link_libraries(basic_example PRIVATE 
+    cudf::cudf
+    cuml::cuml++
+)
 target_compile_features(basic_example PRIVATE cxx_std_17)

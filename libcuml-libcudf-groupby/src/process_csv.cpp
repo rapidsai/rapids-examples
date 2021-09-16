@@ -6,10 +6,39 @@
 #include <cudf/transpose.hpp>
 #include <cudf/table/table.hpp>
 
+#include <cuml/linear_model/glm.hpp>
+#include <raft/handle.hpp>
+
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
+
+#include <rmm/exec_policy.hpp>
+#include <cuda_runtime.h>
+
+#include <thrust/uninitialized_fill.h>
+#include <thrust/device_malloc.h>
+#include <thrust/device_vector.h>
+
+
+
+#ifndef CUDA_RT_CALL
+#define CUDA_RT_CALL(call)                                                    \
+  {                                                                           \
+    cudaError_t cudaStatus = call;                                            \
+    if (cudaSuccess != cudaStatus)                                            \
+      fprintf(stderr,                                                         \
+              "ERROR: CUDA RT call \"%s\" in line %d of file %s failed with " \
+              "%s (%d).\n",                                                   \
+              #call,                                                          \
+              __LINE__,                                                       \
+              __FILE__,                                                       \
+              cudaGetErrorString(cudaStatus),                                 \
+              cudaStatus);                                                    \
+  }
+#endif  // CUDA_RT_CALL
+
 
 cudf::io::table_with_metadata read_csv(std::string const& file_path)
 {
@@ -48,6 +77,40 @@ std::unique_ptr<cudf::table> cuml_regression_on_groupby(cudf::table_view input_t
 
   auto values_view = (gb_groups.values)->view();
   auto interleaved = generate_grouped_arr(values_view, 0, 3);
+
+  raft::handle_t handle;
+  cudaStream_t stream = rmm::cuda_stream_default.value();
+  CUDA_RT_CALL(cudaStreamCreate(&stream));
+  handle.set_stream(stream);
+
+  // matrix pointer
+  float *matrix_pointer = interleaved->mutable_view().data<float>();
+  int n_rows = 3;
+  int n_cols = 2;
+
+/*
+  rmm::device_uvector<float> labels(3, rmm::cuda_stream_default);
+  thrust::uninitialized_fill(thrust::cuda::par.on(stream), labels.begin(), labels.end(), 0);
+
+  rmm::device_uvector<float> coef(2, rmm::cuda_stream_default);
+  thrust::uninitialized_fill(thrust::cuda::par.on(stream), coef.begin(), coef.end(), 0); 
+
+  rmm::device_uvector<float> intercept(1, rmm::cuda_stream_default);
+  thrust::uninitialized_fill(thrust::cuda::par.on(stream), intercept.begin(), intercept.end(), 0);   
+*/
+  thrust::device_ptr<float> labels = thrust::device_malloc<float>(10);
+  thrust::device_ptr<float> coef = thrust::device_malloc<float>(10);
+  // thrust::device_ptr<float> intercept = thrust::device_malloc<float>(10);
+  thrust::size_type intercept_size = 1;
+  thrust::device_vector<float> intercept(1, 0.0);
+  float *intercept_ptr = thrust::raw_pointer_cast(intercept.data());
+
+
+  bool fit_intercept = false;
+  bool normalize = false;
+
+  ML::GLM::olsFit(handle, matrix_pointer, n_rows, n_cols, labels.get(), coef.get(), intercept_ptr, fit_intercept, normalize);
+  
   return std::make_unique<cudf::table>(cudf::table_view({interleaved->view()}).select({0}));
 }
 
