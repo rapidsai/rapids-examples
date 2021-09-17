@@ -70,11 +70,11 @@ std::unique_ptr<cudf::column> generate_grouped_arr(cudf::table_view values, cudf
 
 std::unique_ptr<cudf::table> cuml_regression_on_groupby(cudf::table_view input_table)
 {
-  // Schema: | Timestamp | Name | X | Y
+  // Schema: Name | X | Y | target
   auto keys = cudf::table_view{{input_table.column(0)}};  // name
 
   cudf::groupby::groupby grpby_obj(keys);
-  cudf::groupby::groupby::groups gb_groups = grpby_obj.get_groups(input_table.select({1,2}));
+  cudf::groupby::groupby::groups gb_groups = grpby_obj.get_groups(input_table.select({1,2,3}));
   auto values_view = (gb_groups.values)->view();
   
   auto interleaved = generate_grouped_arr(values_view, 0, 3);
@@ -89,20 +89,20 @@ std::unique_ptr<cudf::table> cuml_regression_on_groupby(cudf::table_view input_t
   // looping through each group
   for (int i = 1; i < gb_groups.offsets.size(); i++) {
     cudf::size_type offset1 = gb_groups.offsets[i-1], offset2 = gb_groups.offsets[i];
+    int n_rows = offset2 - offset1;
+
     auto interleaved = generate_grouped_arr(values_view, offset1, offset2);
     double *matrix_pointer = interleaved->mutable_view().data<double>();
 
     // original values
-    raft::print_device_vector<double>("values", matrix_pointer, (offset2 - offset1) * n_cols, std::cout);
-
-    int n_rows = (offset2 - offset1) * n_cols;
-    thrust::device_ptr<double> labels = thrust::device_malloc<double>(n_rows);
+    raft::print_device_vector<double>("values", matrix_pointer, n_rows * n_cols, std::cout);
     thrust::device_ptr<double> coef = thrust::device_malloc<double>(n_cols);
     double intercept;
-    ML::GLM::olsFit(handle, matrix_pointer, n_rows, n_cols, labels.get(), coef.get(), &intercept, false, false);
 
-    // values overrwritten by olsFit (if the line above is commented out then the same value will be written out)
-    raft::print_device_vector<double>("values", matrix_pointer, (offset2 - offset1) * n_cols, std::cout);
+    // label is stored in matrix_pointer + n_rows * n_cols
+    ML::GLM::olsFit(handle, matrix_pointer, n_rows, n_cols, matrix_pointer + n_rows * n_cols, coef.get(), &intercept, false, true);
+
+    raft::print_device_vector<double>("coef", coef.get(), n_cols, std::cout);
   }
 
   return std::make_unique<cudf::table>(cudf::table_view({interleaved->view()}).select({0}));
