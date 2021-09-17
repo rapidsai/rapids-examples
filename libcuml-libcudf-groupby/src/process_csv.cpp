@@ -8,11 +8,13 @@
 
 #include <cuml/linear_model/glm.hpp>
 #include <raft/handle.hpp>
+#include <raft/cudart_utils.h>
 
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
+#include <iostream>
 
 #include <rmm/exec_policy.hpp>
 #include <cuda_runtime.h>
@@ -20,6 +22,7 @@
 #include <thrust/uninitialized_fill.h>
 #include <thrust/device_malloc.h>
 #include <thrust/device_vector.h>
+
 
 
 
@@ -70,47 +73,38 @@ std::unique_ptr<cudf::table> cuml_regression_on_groupby(cudf::table_view input_t
   // Schema: | Timestamp | Name | X | Y
   auto keys = cudf::table_view{{input_table.column(0)}};  // name
 
-  // Compute the average of each company's closing price with entire column
   cudf::groupby::groupby grpby_obj(keys);
-
   cudf::groupby::groupby::groups gb_groups = grpby_obj.get_groups(input_table.select({1,2}));
-
   auto values_view = (gb_groups.values)->view();
+  
   auto interleaved = generate_grouped_arr(values_view, 0, 3);
 
+  // cuml setup
+  int n_cols = 2;
   raft::handle_t handle;
   cudaStream_t stream = rmm::cuda_stream_default.value();
   CUDA_RT_CALL(cudaStreamCreate(&stream));
   handle.set_stream(stream);
 
-  // matrix pointer
-  float *matrix_pointer = interleaved->mutable_view().data<float>();
-  int n_rows = 3;
-  int n_cols = 2;
+  // looping through each group
+  for (int i = 1; i < gb_groups.offsets.size(); i++) {
+    cudf::size_type offset1 = gb_groups.offsets[i-1], offset2 = gb_groups.offsets[i];
+    auto interleaved = generate_grouped_arr(values_view, offset1, offset2);
+    double *matrix_pointer = interleaved->mutable_view().data<double>();
 
-/*
-  rmm::device_uvector<float> labels(3, rmm::cuda_stream_default);
-  thrust::uninitialized_fill(thrust::cuda::par.on(stream), labels.begin(), labels.end(), 0);
+    // original values
+    raft::print_device_vector<double>("values", matrix_pointer, (offset2 - offset1) * n_cols, std::cout);
 
-  rmm::device_uvector<float> coef(2, rmm::cuda_stream_default);
-  thrust::uninitialized_fill(thrust::cuda::par.on(stream), coef.begin(), coef.end(), 0); 
+    int n_rows = (offset2 - offset1) * n_cols;
+    thrust::device_ptr<double> labels = thrust::device_malloc<double>(n_rows);
+    thrust::device_ptr<double> coef = thrust::device_malloc<double>(n_cols);
+    double intercept;
+    ML::GLM::olsFit(handle, matrix_pointer, n_rows, n_cols, labels.get(), coef.get(), &intercept, false, false);
 
-  rmm::device_uvector<float> intercept(1, rmm::cuda_stream_default);
-  thrust::uninitialized_fill(thrust::cuda::par.on(stream), intercept.begin(), intercept.end(), 0);   
-*/
-  thrust::device_ptr<float> labels = thrust::device_malloc<float>(10);
-  thrust::device_ptr<float> coef = thrust::device_malloc<float>(10);
-  // thrust::device_ptr<float> intercept = thrust::device_malloc<float>(10);
-  thrust::size_type intercept_size = 1;
-  thrust::device_vector<float> intercept(1, 0.0);
-  float *intercept_ptr = thrust::raw_pointer_cast(intercept.data());
+    // values overrwritten by olsFit (if the line above is commented out then the same value will be written out)
+    raft::print_device_vector<double>("values", matrix_pointer, (offset2 - offset1) * n_cols, std::cout);
+  }
 
-
-  bool fit_intercept = false;
-  bool normalize = false;
-
-  ML::GLM::olsFit(handle, matrix_pointer, n_rows, n_cols, labels.get(), coef.get(), intercept_ptr, fit_intercept, normalize);
-  
   return std::make_unique<cudf::table>(cudf::table_view({interleaved->view()}).select({0}));
 }
 
