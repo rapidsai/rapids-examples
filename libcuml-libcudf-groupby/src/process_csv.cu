@@ -17,6 +17,7 @@
 #include <utility>
 #include <vector>
 #include <iostream>
+#include "debug_printers.hpp"
 
 #include <rmm/exec_policy.hpp>
 #include <cuda_runtime.h>
