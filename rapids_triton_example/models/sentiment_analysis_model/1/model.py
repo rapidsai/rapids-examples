@@ -6,6 +6,11 @@ import triton_python_backend_utils as pb_utils
 from pathlib import Path
 from transformers import BertModel
 
+### Unsue why utils.import is not working
+from torch._C import _from_dlpack as from_dlpack
+from torch._C import _to_dlpack as to_dlpack
+
+
 class BERT_Arch(nn.Module):
     def __init__(self):
         super(BERT_Arch, self).__init__()
@@ -54,16 +59,13 @@ class TritonPythonModel:
         # You must parse model_config. JSON string is not parsed here
         self.model_config = model_config = json.loads(args['model_config'])
         self.model_instance_device_id  = json.loads(args['model_instance_device_id'])
-
-
         self.device = torch.device("cuda:{}".format(self.model_instance_device_id) if torch.cuda.is_available() else "cpu")
-        
+
         model = BERT_Arch()
-        
+
         # Load saved model
         m_p = Path(__file__).with_name('model.pt')
         model.load_state_dict(torch.load(m_p))    
-        
         model = model.eval()
         self.model = model.to(self.device)
 
@@ -96,21 +98,19 @@ class TritonPythonModel:
         # and create a pb_utils.InferenceResponse for each of them.
         for request in requests:
             # Get INPUT0
-            input_ids = pb_utils.get_input_tensor_by_name(request, "input_ids")
-            attention_mask = pb_utils.get_input_tensor_by_name(request, "attention_mask")
-            ### Wont Need below conversion in newer releases
-            ### see PR https://github.com/triton-inference-server/python_backend/pull/62
-            input_ids = torch.Tensor(input_ids.as_numpy()).long().to(self.device)
-            attention_mask = torch.Tensor(attention_mask.as_numpy()).long().to(self.device)
-            
+            input_ids = pb_utils.get_input_tensor_by_name(request, "input_ids").to_dlpack()
+            attention_mask = pb_utils.get_input_tensor_by_name(request, "attention_mask").to_dlpack()
+
+            # TODO: Set environment variable to prevent to(self.device)
+            input_ids = from_dlpack(input_ids).long().to(self.device)
+            attention_mask = from_dlpack(attention_mask).long().to(self.device)
+
             with torch.no_grad():
                 outputs = self.model(input_ids, attention_mask)
                 conf, preds = torch.max(outputs, dim=1)
 
-            # Create output tensors. You need pb_utils.Tensor
-            # objects to create pb_utils.InferenceResponse.
             out_tensor_0 = pb_utils.Tensor("preds", preds.cpu().numpy())
-            
+ 
             # Create InferenceResponse. You can set an error here in case
             # there was a problem with handling this inference request.
             # Below is an example of how you can set errors in inference
