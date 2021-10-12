@@ -14,7 +14,6 @@ from pathlib import Path
 import triton_python_backend_utils as pb_utils
 
 
-
 class TritonPythonModel:
     """Your Python model must use the same class name. Every Python model
     that is created must have "TritonPythonModel" as the class name.
@@ -40,16 +39,16 @@ class TritonPythonModel:
         # You must parse model_config. JSON string is not parsed here
         self.model_config  = json.loads(args['model_config'])
         self.model_instance_device_id  = json.loads(args['model_instance_device_id'])
+
         import numba.cuda as cuda
         cuda.select_device(self.model_instance_device_id)
         import cudf
         from cudf.core.subword_tokenizer import SubwordTokenizer
-        
+
         # get vocab
         v_p = Path(__file__).with_name('vocab_hash.txt')
-        
-        
         self.cudf_tokenizer = SubwordTokenizer(v_p, do_lower_case=True)
+
         self.cudf_lib = cudf
         self.seq_len = 256
 
@@ -99,10 +98,14 @@ class TritonPythonModel:
             
             ### Wont need .get() conversion in newer releases
             ### see PR https://github.com/triton-inference-server/python_backend/pull/62
+            input_ids = cudf_output['input_ids'].astype(np.int32).toDlpack()
+            attention_mask = cudf_output['attention_mask'].astype(np.int32).toDlpack()
+            metadata = cudf_output['metadata'].astype(np.int32).toDlpack()
             
-            out_tensor_0 = pb_utils.Tensor("input_ids", cudf_output['input_ids'].get().astype(np.int32))
-            out_tensor_1 = pb_utils.Tensor("attention_mask", cudf_output['attention_mask'].get().astype(np.int32))
-            out_tensor_2 = pb_utils.Tensor("metadata", cudf_output['metadata'].get().astype(np.int32))
+
+            out_tensor_0 = pb_utils.Tensor.from_dlpack("input_ids", input_ids)
+            out_tensor_1 = pb_utils.Tensor.from_dlpack("attention_mask", attention_mask )
+            out_tensor_2 = pb_utils.Tensor.from_dlpack("metadata", metadata)
             
 
             # Create InferenceResponse. You can set an error here in case
