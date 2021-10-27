@@ -18,8 +18,20 @@ input [
 output [
   {
     name: "preds"
-    data_type: TYPE_INT64
+    data_type: TYPE_INT32
     dims: [ -1]
   }
 ]
 instance_group [{ kind: KIND_GPU }]
+
+parameters: 
+[
+    {
+      key: "FORCE_CPU_ONLY_INPUT_TENSORS" 
+      value: {string_value:"yes"}
+    },
+    {
+      key: "EXECUTION_ENV_PATH"
+      value: {string_value: "/root/miniconda3/envs/rapids/rapids.tar.gz"}
+    }
+]  

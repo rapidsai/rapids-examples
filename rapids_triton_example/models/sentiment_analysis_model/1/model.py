@@ -108,6 +108,7 @@ class TritonPythonModel:
             with torch.no_grad():
                 outputs = self.model(input_ids, attention_mask)
                 conf, preds = torch.max(outputs, dim=1)
+                preds = preds.int()
 
             out_tensor_0 = pb_utils.Tensor("preds", preds.cpu().numpy())
  

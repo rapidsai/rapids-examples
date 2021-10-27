@@ -4,6 +4,7 @@ import numpy as np
 import sys
 import json
 from pathlib import Path
+import time
 
 # triton_python_backend_utils is available in every Triton Python model. You
 # need to use this module to create inference requests and responses. It also
@@ -78,6 +79,7 @@ class TritonPythonModel:
 
         # Every Python backend must iterate over everyone of the requests
         # and create a pb_utils.InferenceResponse for each of them.
+        st = time.time()
         for request in requests:
             # Get INPUT0
             raw_strings = pb_utils.get_input_tensor_by_name(request, "product_reviews").as_numpy()
@@ -121,6 +123,8 @@ class TritonPythonModel:
 
         # You should return a list of pb_utils.InferenceResponse. Length
         # of this list must match the length of `requests` list.
+        et = time.time()
+        print(f"Pre-processing Time = {et-st}")
         return responses
 
     def finalize(self):

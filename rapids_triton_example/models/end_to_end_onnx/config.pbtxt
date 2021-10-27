@@ -1,4 +1,4 @@
-name: "end_to_end_model"
+name: "end_to_end_onnx"
 platform: "ensemble"
 max_batch_size: 128
 input [
@@ -11,7 +11,7 @@ input [
 output [
   {
     name: "preds"
-    data_type: TYPE_INT64
+    data_type: TYPE_INT32
     dims: [ -1]
   }
 ]
@@ -32,7 +32,7 @@ ensemble_scheduling {
       }
     },
     {
-      model_name: "sentiment_analysis_model"
+      model_name: "sentiment_onnx_model"
       model_version: 1
       input_map {
         key: "input_ids"

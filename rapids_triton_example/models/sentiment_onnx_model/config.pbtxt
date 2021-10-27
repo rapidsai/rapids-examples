@@ -1,0 +1,37 @@
+# Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
+
+name: "sentiment_onnx_model"
+backend: "onnxruntime"
+
+input [
+ {
+    name: "input_ids"
+    data_type: TYPE_INT32
+    dims: [ -1, 256]
+  },
+  {
+    name: "attention_mask"
+    data_type: TYPE_INT32
+    dims: [-1, 256]
+  }
+]
+output [
+  {
+    name: "preds"
+    data_type: TYPE_INT32
+    dims: [ -1]
+  }
+]
+instance_group [{ kind: KIND_GPU }]
+
+
+# optimization { execution_accelerators {
+#  gpu_execution_accelerator : [ {
+#    name : "tensorrt"
+#    parameters { key: "precision_mode" value: "FP16" },
+#    parameters { key: "max_workspace_size_bytes" value: "1073741824" },
+#    parameters { key: "trt_engine_cache_enable" value: "True" }
+#    }
+#  ]
+#  }
+# }
