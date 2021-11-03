@@ -6,7 +6,7 @@ RUN cd /opt/nvidia && wget https://repo.continuum.io/miniconda/Miniconda3-latest
 ENV PATH="/root/miniconda3/bin:$PATH"
 RUN conda init bash \ 
      && . ~/.bashrc \ 
-     && conda create -n rapids -c rapidsai-nightly -c pytorch -c nvidia  -c conda-forge cmake rapidjson cupy==9.5 cudf pytorch=1.7.1 transformers python=3.8 cudatoolkit=11.0 conda-pack
+     && conda create -n rapids -c rapidsai-nightly -c pytorch -c nvidia  -c conda-forge cmake rapidjson cupy==9.5 cudnn cutensor nccl  cudf pytorch=1.7.1 transformers python=3.8 cudatoolkit=11.0 conda-pack
 
 RUN conda init bash
 
