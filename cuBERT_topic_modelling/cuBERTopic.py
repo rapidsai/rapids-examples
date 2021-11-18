@@ -402,8 +402,7 @@ class gpu_bertopic:
         self.new_topic_mapping = sorted(
             self.topic_sizes_df["Topic"].to_pandas()
         )
-        print(type(self.new_topic_mapping))
-        print(type(self.original_topic_mapping))
+
         self.original_topic_mapping = self.original_topic_mapping.to_arrow().to_pylist()
         self.final_topic_mapping = dict(zip(self.new_topic_mapping, 
                                             self.original_topic_mapping))
