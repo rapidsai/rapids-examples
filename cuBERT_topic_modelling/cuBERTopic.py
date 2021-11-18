@@ -21,6 +21,9 @@ class gpu_bertopic:
     def __init__(self):
         self.top_n_words_df = None
         self.topic_sizes_df = None
+        self.original_topic_mapping = None
+        self.new_topic_mapping = None
+        self.final_topic_mapping = None
 
     def create_embeddings(self, data):
         """Creates the sentence embeddings using SentenceTransformer
@@ -353,8 +356,6 @@ class gpu_bertopic:
             documents
         )
 
-        documents = cudf.from_pandas(documents)
-
         del umap_embeddings
 
         documents = self.sort_mappings_by_frequency(documents)
@@ -383,7 +384,7 @@ class gpu_bertopic:
             The top n words for a specific word and its respective
             c-TF-IDF scores
         """
-        return self.top_n_words[topic][:num_words]
+        return self.top_n_words[int(self.final_topic_mapping[topic])][:num_words]
 
     def get_topic_info(self):
         """Get information about each topic including its id, frequency, and name
@@ -397,7 +398,16 @@ class gpu_bertopic:
         test = self.topic_sizes_df.Name.str.split(
             "_", expand=True
         )[[0, 1, 2, 3, 4]]
-        test[0] = sorted(self.topic_sizes_df["Topic"].to_pandas())
+        self.original_topic_mapping = test[0]
+        self.new_topic_mapping = sorted(
+            self.topic_sizes_df["Topic"].to_pandas()
+        )
+        print(type(self.new_topic_mapping))
+        print(type(self.original_topic_mapping))
+        self.original_topic_mapping = self.original_topic_mapping.to_arrow().to_pylist()
+        self.final_topic_mapping = dict(zip(self.new_topic_mapping, 
+                                            self.original_topic_mapping))
+        test[0] = self.new_topic_mapping
         test["Name"] = (
             test[0].astype("str")
             + "_"
