@@ -200,6 +200,8 @@ class gpu_bertopic:
             count: object of class CountVecWrapper, which is derived
             from CountVectorizer
             docs_per_topics_topics: A list of unique topic labels
+            mmr_flag: Boolean value indicating whether or not we want
+            to run MMR
             n: number of words per topic (Default: 30)
         Returns:
             top_n_words: The top n words per topic
