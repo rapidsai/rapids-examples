@@ -11,3 +11,4 @@
 [pycuda\_cudf\_integration](./pycuda_cudf_integration) | Demonstrates processing python cudf dataframes using `pycuda`
 [tfidf-benchmark](./tfidf-benchmark) | Benchmarks NLP text processing pipeline in cuML + Dask vs. Apache Spark
 [rapids_triton_example](./rapids_triton_example) |  Example of using RAPIDS+Pytorch with Nvidia Triton.
+[cuBERT_topic_modelling](./cuBERT_topic_modelling) |  Leveraging BERT, TF-IDF and NVIDIA RAPIDS to create easily interpretable topics.
