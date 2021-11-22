@@ -12,7 +12,9 @@ Currently, [BERTopic](https://github.com/MaartenGr/BERTopic) library in general 
 
 `cuBERTopic` runs on `cudf` and `cuml` which can be installed using instructions[here](https://rapids.ai/start.html) and `cupy` which can be installed using instructions [here](https://docs.cupy.dev/en/stable/install.html)
 
-After installing the dependencies, clone the repository and you can now use `cuBERTopic`!
+After installing the dependencies, clone the repository and run `pip install -e .` from the root directory. 
+
+Now you can do `import cuBERTopic` and you're good to go!
 
 ## Quick Start
 
