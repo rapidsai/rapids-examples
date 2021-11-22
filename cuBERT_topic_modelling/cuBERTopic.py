@@ -1,9 +1,3 @@
-import numpy as np
-import random
-
-random.seed(10)
-np.random.seed(0)
-
 from sentence_transformers import SentenceTransformer
 import cuml
 import cudf
@@ -12,12 +6,12 @@ from cuml.manifold import UMAP
 from cuml.metrics import pairwise_distances
 import cupy as cp
 from torch.utils.dlpack import to_dlpack
-from vectorizer import CountVecWrapper
 from ctfidf import ClassTFIDF
 from mmr import mmr
+from utils.sparse_matrix_utils import top_n_idx_sparse, top_n_values_sparse
+from vectorizer.vectorizer import CountVecWrapper
 
-
-class gpu_bertopic:
+class gpu_BERTopic:
     def __init__(self):
         self.top_n_words_df = None
         self.topic_sizes_df = None
@@ -83,7 +77,9 @@ class gpu_bertopic:
             documents: DataFrame from the original data
 
         Returns:
-            cluster: HDBSCAN object
+            documents: Modified dataframe with topic labels
+            probabilities: response from cluster.probabilities_ which
+            represents the likelihood of the doc belonging to a cluster.
         """
         cluster = cuml.cluster.HDBSCAN(
             min_cluster_size=10,
@@ -127,8 +123,7 @@ class gpu_bertopic:
     def create_topics(self, docs_df):
         """Extract topics from the clusters using a class-based TF-IDF
         Arguments:
-            data: list with documents
-            cluster: HDBSCAN object
+            docs_df: DataFrame containing documents and other information
         Returns:
             tf_idf: The resulting matrix giving a value (importance score) for
             each word per topic
@@ -142,52 +137,52 @@ class gpu_bertopic:
         tf_idf, count = self.new_c_tf_idf(docs_df, len(docs_df))
         return tf_idf, count, docs_per_topics_topics, docs_df
 
-    def top_n_idx_sparse(self, matrix, n):
-        """Return indices of top n values in each row of a sparse matrix
-        Retrieved from:
-            https://stackoverflow.com/questions/49207275/finding-the-top-n-values-in-a-row-of-a-scipy-sparse-matrix
-        Args:
-            matrix: The sparse matrix from which to get the
-            top n indices per row
-            n: The number of highest values to extract from each row
-        Returns:
-            indices: The top n indices per row
-        """
-        top_n_idx = []
-        mat_inptr_np_ar = matrix.indptr.get()
-        le_np = mat_inptr_np_ar[:-1]
-        ri_np = mat_inptr_np_ar[1:]
+    # def top_n_idx_sparse(self, matrix, n):
+    #     """Return indices of top n values in each row of a sparse matrix
+    #     Retrieved from:
+    #         https://stackoverflow.com/questions/49207275/finding-the-top-n-values-in-a-row-of-a-scipy-sparse-matrix
+    #     Args:
+    #         matrix: The sparse matrix from which to get the
+    #         top n indices per row
+    #         n: The number of highest values to extract from each row
+    #     Returns:
+    #         indices: The top n indices per row
+    #     """
+    #     top_n_idx = []
+    #     mat_inptr_np_ar = matrix.indptr.get()
+    #     le_np = mat_inptr_np_ar[:-1]
+    #     ri_np = mat_inptr_np_ar[1:]
 
-        for le, ri in zip(le_np, ri_np):
-            le = le.item()
-            ri = ri.item()
-            n_row_pick = min(n, ri - le)
-            top_n_idx.append(
-                matrix.indices[
-                    le + cp.argpartition(
-                        matrix.data[le:ri], -n_row_pick
-                    )[-n_row_pick:]
-                ]
-            )
-        return cp.array(top_n_idx)
+    #     for le, ri in zip(le_np, ri_np):
+    #         le = le.item()
+    #         ri = ri.item()
+    #         n_row_pick = min(n, ri - le)
+    #         top_n_idx.append(
+    #             matrix.indices[
+    #                 le + cp.argpartition(
+    #                     matrix.data[le:ri], -n_row_pick
+    #                 )[-n_row_pick:]
+    #             ]
+    #         )
+    #     return cp.array(top_n_idx)
 
-    def top_n_values_sparse(self, matrix, indices):
-        """Return the top n values for each row in a sparse matrix
-        Args:
-            matrix: The sparse matrix from which to get the top n
-            indices per row
-            indices: The top n indices per row
-        Returns:
-            top_values: The top n scores per row
-        """
-        top_values = []
-        for row, values in enumerate(indices):
-            scores = cp.array(
-                [matrix[row, value] if value is not None
-                 else 0 for value in values]
-            )
-            top_values.append(scores)
-        return cp.array(top_values)
+    # def top_n_values_sparse(self, matrix, indices):
+    #     """Return the top n values for each row in a sparse matrix
+    #     Args:
+    #         matrix: The sparse matrix from which to get the top n
+    #         indices per row
+    #         indices: The top n indices per row
+    #     Returns:
+    #         top_values: The top n scores per row
+    #     """
+    #     top_values = []
+    #     for row, values in enumerate(indices):
+    #         scores = cp.array(
+    #             [matrix[row, value] if value is not None
+    #              else 0 for value in values]
+    #         )
+    #         top_values.append(scores)
+    #     return cp.array(top_values)
 
     # Topic representation
     def extract_top_n_words_per_topic(
@@ -213,8 +208,8 @@ class gpu_bertopic:
 
         labels = sorted(docs_per_topics_topics.to_arrow().to_pylist())
 
-        indices = self.top_n_idx_sparse(tf_idf, n)
-        scores = self.top_n_values_sparse(tf_idf, indices)
+        indices = top_n_idx_sparse(tf_idf, n)
+        scores = top_n_values_sparse(tf_idf, indices)
         sorted_indices = cp.argsort(scores, 1)
         indices = cp.take_along_axis(indices, sorted_indices, axis=1)
         scores = cp.take_along_axis(scores, sorted_indices, axis=1)
@@ -309,9 +304,11 @@ class gpu_bertopic:
                 similarities[topic_to_merge + 1]) - 1
 
             # Adjust topics
-            a = cudf.Series(topic_to_merge_into)
-            docs_df.loc[docs_df["Topic"] == topic_to_merge, "Topic"] = a
-            old_topics = docs_df.sort_values("Topic").Topic.unique()
+            topic_to_merge_into_series = cudf.Series(topic_to_merge_into)
+            docs_df.loc[
+                docs_df["Topic"] == topic_to_merge, "Topic"
+            ] = topic_to_merge_into_series
+            old_topics = docs_df.Topic.unique().sort_values()
             old_topics = old_topics.to_arrow().to_pylist()
             map_topics = {
                 old_topic: index - 1 for index,
@@ -397,10 +394,10 @@ class gpu_bertopic:
 
         # Note: getting topics in sorted order without using
         # TopicMapper, as in BERTopic
-        test = self.topic_sizes_df.Name.str.split(
+        topic_sizes_df_columns = self.topic_sizes_df.Name.str.split(
             "_", expand=True
         )[[0, 1, 2, 3, 4]]
-        self.original_topic_mapping = test[0]
+        self.original_topic_mapping = topic_sizes_df_columns[0]
         self.new_topic_mapping = sorted(
             self.topic_sizes_df["Topic"].to_pandas()
         )
@@ -408,20 +405,20 @@ class gpu_bertopic:
         self.original_topic_mapping = self.original_topic_mapping.to_arrow().to_pylist()
         self.final_topic_mapping = dict(zip(self.new_topic_mapping, 
                                             self.original_topic_mapping))
-        test[0] = self.new_topic_mapping
-        test["Name"] = (
-            test[0].astype("str")
+        topic_sizes_df_columns[0] = self.new_topic_mapping
+        topic_sizes_df_columns["Name"] = (
+            topic_sizes_df_columns[0].astype("str")
             + "_"
-            + test[1]
+            + topic_sizes_df_columns[1]
             + "_"
-            + test[2]
+            + topic_sizes_df_columns[2]
             + "_"
-            + test[3]
+            + topic_sizes_df_columns[3]
             + "_"
-            + test[4]
+            + topic_sizes_df_columns[4]
         )
-        self.topic_sizes_df["Name"] = test["Name"]
-        self.topic_sizes_df["Topic"] = test[0]
+        self.topic_sizes_df["Name"] = topic_sizes_df_columns["Name"]
+        self.topic_sizes_df["Topic"] = topic_sizes_df_columns[0]
         return self.topic_sizes_df
 
     def update_topic_size(self, documents):

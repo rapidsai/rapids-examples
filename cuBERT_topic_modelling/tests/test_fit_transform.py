@@ -6,18 +6,10 @@ from bertopic._utils import (
 from bertopic.backend._utils import select_backend
 import pandas as pd
 import numpy as np
-import sys
-from os.path import dirname, realpath
 import cudf
 from sklearn.datasets import fetch_20newsgroups
 from sentence_transformers import SentenceTransformer
-
-filepath = realpath(__file__)
-dir_of_file = dirname(filepath)
-parent_dir_of_file = dirname(dir_of_file)
-parents_parent_dir_of_file = dirname(parent_dir_of_file)
-sys.path.append(parents_parent_dir_of_file + "/cuBERT-topic-modelling/")
-from cuBERTopic import gpu_bertopic
+from cuBERTopic import gpu_BERTopic
 
 
 class berttopic_wrapper(BERTopic):
@@ -85,7 +77,7 @@ class berttopic_wrapper(BERTopic):
         return predictions, probabilities
 
 
-class gpubertopic_wrapper(gpu_bertopic):
+class gpubertopic_wrapper(gpu_BERTopic):
     def fit_transform(self, data):
         """Fit the models on a collection of documents, generate topics, and return
         the docs with topics

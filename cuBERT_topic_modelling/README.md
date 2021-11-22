@@ -20,6 +20,6 @@ An [example](berttopic_example.ipynb) notebook is provided, which goes through t
 
 ## Acknowledgement
 
-Our work has been inspired from the [BERTopic library](https://github.com/MaartenGr/BERTopic) and Maarten Grootendorst's [blog](https://towardsdatascience.com/topic-modeling-with-bert-779f7db187e6) on how to use BERT to create your own topic model.
+Our work ports the CPU implementation of the [BERTopic library](https://github.com/MaartenGr/BERTopic) to a python-based GPU backend using NVIDIA RAPIDS.
 
-
+Please refer to Maarten Grootendorst's [blog](https://towardsdatascience.com/topic-modeling-with-bert-779f7db187e6) on how to use BERT to create your own topic model.

@@ -1,14 +1,6 @@
-import sys
-from os.path import dirname, realpath
 import numpy as np
 from sklearn.datasets import fetch_20newsgroups
-
-filepath = realpath(__file__)
-dir_of_file = dirname(filepath)
-parent_dir_of_file = dirname(dir_of_file)
-parents_parent_dir_of_file = dirname(parent_dir_of_file)
-sys.path.append(parents_parent_dir_of_file + "/cuBERT-topic-modelling/")
-from cuBERTopic import gpu_bertopic
+from cuBERTopic import gpu_BERTopic
 
 newsgroup_docs = fetch_20newsgroups(
     subset="all", remove=("headers", "footers", "quotes")
@@ -22,7 +14,7 @@ def test_extract_embeddings():
     the correct shape should be outputted. The embeddings by itself
     should not exceed certain values as a sanity check.
     """
-    gpu_topic = gpu_bertopic()
+    gpu_topic = gpu_BERTopic()
     single_embedding = gpu_topic.create_embeddings(["a document"])
     multiple_embeddings = gpu_topic.create_embeddings(["a document", "another document"])
     assert single_embedding.shape[0] == 1

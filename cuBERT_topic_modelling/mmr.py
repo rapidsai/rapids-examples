@@ -30,9 +30,6 @@ def mmr(
          List[str]: The selected keywords/keyphrases
     """
 
-    # doc_embedding = doc_embedding.get()
-    # word_embeddings = word_embeddings.get()
-    # words = words.to_arrow().to_pylist()
     # Extract similarity within words, and between words and the document
     word_doc_similarity = pairwise_distances(
         word_embeddings, doc_embedding, metric="cosine"
@@ -43,8 +40,6 @@ def mmr(
     keywords_idx = [cp.argmax(word_doc_similarity).get()]
     candidates_idx = [i for i in range(len(words)) if i != keywords_idx[0]]
 
-    # keywords_idx = keywords_idx.get()
-    # word_similarity = word_similarity.get()
     for _ in range(top_n - 1):
         # Extract similarities within candidates and
         # between candidates and selected keywords/phrases
