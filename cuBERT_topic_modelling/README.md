@@ -6,7 +6,7 @@ Leveraging BERT, TF-IDF and NVIDIA RAPIDS to create easily interpretable topics.
 
 Currently, [BERTopic](https://github.com/MaartenGr/BERTopic) library in general utilizes GPUs as part of the SenteneTransformer package, which is only used during the encoding process. We can accelerate other bits of the pipeline such as dimension reduction (UMAP), Topic Creation (Count/TF-IDF Vectorization), Clustering (HDBSAN) and Topic Reduction using the RAPIDS ecosystem that has a similar API as Pandas, sckit-learn but leverages GPUs for the end-to-end pipeline.
 
-![Overview of pipeline design](cuBERT_topic_modelling/cuBERTopic.jpg)
+![Overview of pipeline design](cuBERTopic.jpg)
 
 ## Installation
 
