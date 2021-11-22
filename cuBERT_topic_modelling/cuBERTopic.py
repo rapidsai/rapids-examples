@@ -483,3 +483,4 @@ class gpu_bertopic:
 
         self.update_topic_size(documents)
         return documents
+    
