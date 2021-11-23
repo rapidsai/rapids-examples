@@ -8,8 +8,9 @@ import cupy as cp
 from torch.utils.dlpack import to_dlpack
 from ctfidf import ClassTFIDF
 from mmr import mmr
-from utils.sparse_matrix_utils import top_n_idx_sparse, top_n_values_sparse
+from utils.sparse_matrix_utils import top_n_idx_sparse
 from vectorizer.vectorizer import CountVecWrapper
+import math
 
 class gpu_BERTopic:
     def __init__(self):
@@ -158,28 +159,23 @@ class gpu_BERTopic:
         """
 
         words = count.get_feature_names().to_arrow().to_pylist()
-
         labels = sorted(docs_per_topics_topics.to_arrow().to_pylist())
-
         indices = top_n_idx_sparse(tf_idf, n)
-        scores = top_n_values_sparse(tf_idf, indices)
-        sorted_indices = cp.argsort(scores, 1)
-        indices = cp.take_along_axis(indices, sorted_indices, axis=1)
-        scores = cp.take_along_axis(scores, sorted_indices, axis=1)
         indices = indices.get()
-
-        # Get top 30 words per topic based on c-TF-IDF score
-        top_n_words = {
-            label: [
-                (words[word_index], score)
-                if word_index and score > 0
-                else ("", 0.00001)
-                for word_index, score in zip(
-                    indices[index][::-1], scores[index][::-1]
-                )
-            ]
-            for index, label in enumerate(labels)
-        }
+        
+        top_n_words = {}
+        for i, label in enumerate(labels):
+            list_labels = []
+            indices_row = indices[i]
+            for idx in indices_row:
+                if not math.isnan(idx):
+                    idx = int(idx)
+                    if idx and tf_idf[i, idx] > 0:
+                        list_labels.append((words[idx], tf_idf[i, idx]))
+                    else:
+                        list_labels.append(("", 0.00001))
+            top_n_words[label] = list_labels[::-1]
+        
         if mmr_flag:
             for topic, topic_words in top_n_words.items():
                 words = [word[0] for word in topic_words]
