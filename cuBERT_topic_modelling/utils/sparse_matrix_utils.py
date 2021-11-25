@@ -1,5 +1,4 @@
 import cupy as cp
-import math
 
 def top_n_idx_sparse(matrix, n):
         """Return indices of top n values in each row of a sparse matrix

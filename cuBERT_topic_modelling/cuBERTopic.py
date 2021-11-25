@@ -1,16 +1,24 @@
-from sentence_transformers import SentenceTransformer
+from cudf.core.subword_tokenizer import SubwordTokenizer
+import torch
 import cuml
 import cudf
 from cuml.neighbors import NearestNeighbors
 from cuml.manifold import UMAP
 from cuml.metrics import pairwise_distances
 import cupy as cp
-from torch.utils.dlpack import to_dlpack
+from torch.utils.dlpack import to_dlpack, from_dlpack
 from ctfidf import ClassTFIDF
 from mmr import mmr
 from utils.sparse_matrix_utils import top_n_idx_sparse
 from vectorizer.vectorizer import CountVecWrapper
 import math
+from transformers import AutoModel
+from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
+import transformers
+from cudf.utils.hash_vocab_utils import hash_vocab
+hash_vocab('vocab.txt', 'voc_hash.txt')
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 class gpu_BERTopic:
     def __init__(self):
@@ -19,36 +27,118 @@ class gpu_BERTopic:
         self.original_topic_mapping = None
         self.new_topic_mapping = None
         self.final_topic_mapping = None
+        
+    #TODO: find a way to not iterate through the series (slow on large inputs)
+    def fix_padding(self, sr):
+        # Remove all the padding from the end
+        trimmed_collections = list()
+        max_arr_length = -1
+        for i in sr:
+            dx = to_dlpack(i)
+            embeddings = cp.fromDlpack(dx)
+            trimmed = cp.trim_zeros(embeddings, trim='b')
+            max_arr_length = max(max_arr_length, len(trimmed))
+            trimmed_collections.append(trimmed)
 
-    def create_embeddings(self, data):
+        first_arr_stack = cp.pad(
+            trimmed_collections[0],
+            (0, max_arr_length-len(trimmed_collections[0])),
+            'constant')
+
+        # Add the required padding back
+        for a in range(1, len(trimmed_collections)):    
+            padded = cp.pad(
+                trimmed_collections[a],
+                (0, max_arr_length-len(trimmed_collections[a])),
+                'constant')
+            first_arr_stack = cp.vstack([first_arr_stack, padded])
+            # Convert it back to a PyTorch tensor.
+        tx2 = from_dlpack(first_arr_stack.toDlpack())
+        return tx2
+        
+    #Mean Pooling - Take attention mask into account for correct averaging
+    def mean_pooling(self, model_output, attention_mask):
+        #First element of model_output contains all token embeddings
+        token_embeddings = model_output[0]
+        input_mask_expanded = attention_mask.\
+            unsqueeze(-1).\
+                expand(token_embeddings.size()).float()
+        sum_embeddings = torch.sum(token_embeddings * input_mask_expanded, 1)
+        sum_mask = torch.clamp(input_mask_expanded.sum(1), min=1e-9)
+        return sum_embeddings / sum_mask
+
+    def create_embeddings(self, sentences):
         """Creates the sentence embeddings using SentenceTransformer
 
         Args:
-            data (List[str]): a Python List of strings
+            sentences (cudf.Series[str]): a cuDF Series of Input strings
 
         Returns:
             embeddings (cupy.ndarray): corresponding sentence
             embeddings for the strings passed
         """
-        model = SentenceTransformer("all-MiniLM-L6-v2")
-        embeddings = model.encode(
-            data,
-            show_progress_bar=False,
-            device="cuda:0",
-            batch_size=64,
-            convert_to_numpy=False,
-            convert_to_tensor=True,
+        
+        cudf_tokenizer = SubwordTokenizer('voc_hash.txt',
+                             do_lower_case=True)
+        
+        #Tokenize sentences
+        encoded_input_cudf = cudf_tokenizer(sentences,
+                                        max_length=128,
+                                        max_num_rows=len(sentences),
+                                        padding='max_length',
+                                        return_tensors='pt',
+                                        truncation=True)
+        
+        # Load AutoModel from huggingface model repository
+        model_gpu = AutoModel.from_pretrained(
+            "sentence-transformers/all-MiniLM-L6-v2"
+        ).to(device)
+
+        # Delete the keya nd associated values we do not need
+        del encoded_input_cudf['metadata']
+
+        encoded_input_cudf['input_ids'] = self.fix_padding(
+            encoded_input_cudf['input_ids']
+        )
+        encoded_input_cudf['attention_mask'] = self.fix_padding(
+            encoded_input_cudf['attention_mask']
         )
 
-        # https://docs.cupy.dev/en/stable/user_guide/interoperability.html
-        # we can get tensor object from SentenceTransformer, however further
-        # method used from cuML do not work well with it,
-        # hence, we obtain the entire tensor stack from the transformer, and
-        # then use the interoperability between CuPy/PyTorch to our use.
+        batch_size=64
 
-        dx = to_dlpack(embeddings)
-        embeddings = cp.fromDlpack(dx)
-        return embeddings
+        dataset = TensorDataset(
+            encoded_input_cudf['input_ids'],
+            encoded_input_cudf['attention_mask']
+        )
+
+        dataloader = DataLoader(
+            dataset,
+            batch_size=batch_size
+        )
+
+        model_o_ls = []
+        model_pooler_output = []
+        with torch.no_grad():
+            for data in dataloader:
+                mapping = {}
+                mapping['input_ids'] = data[0]
+                mapping['attention_mask'] = data[1]
+                model_o_ls.append(model_gpu(**mapping).last_hidden_state)
+                model_pooler_output.append(model_gpu(**mapping).pooler_output)
+
+        model_stacked_lhs = torch.cat(model_o_ls)
+        model_stacked_po = torch.cat(model_pooler_output)
+
+        bert_mod = transformers.modeling_outputs.\
+            BaseModelOutputWithPoolingAndCrossAttentions(
+            last_hidden_state=model_stacked_lhs,
+            pooler_output=model_stacked_po
+        )
+
+        #Perform pooling. In this case, mean pooling
+        sentence_embeddings_gpu = self.mean_pooling(bert_mod, encoded_input_cudf['attention_mask'])
+        
+        return sentence_embeddings_gpu
 
     # Dimensionality reduction
     def reduce_dimensionality(self, embeddings):
@@ -291,7 +381,7 @@ class gpu_BERTopic:
 
         # Extract embeddings
         embeddings = self.create_embeddings(
-            documents.Document.to_arrow().to_pylist()
+            documents.Document
         )
 
         # Reduce dimensionality with UMAP
