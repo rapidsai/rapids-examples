@@ -30,7 +30,7 @@ class gpu_BERTopic:
         self.final_topic_mapping = None
 
     # TODO: find a way to not iterate through the torch.Tensor
-    # (slow on large inputs)
+    # using built-in CuPy/cuDF methods
     def fix_padding(self, tnsr):
         """Function to fix padding on a torch.Tensor object
 
@@ -45,9 +45,9 @@ class gpu_BERTopic:
         # Remove all the padding from the end
         trimmed_collections = list()
         max_arr_length = -1
-        for i in tnsr:
-            dx = to_dlpack(i)
-            embeddings = cp.fromDlpack(dx)
+        dx = to_dlpack(tnsr)
+        embeddings_collecton = cp.fromDlpack(dx)
+        for embeddings in embeddings_collecton:
             trimmed = cp.trim_zeros(embeddings, trim='b')
             max_arr_length = max(max_arr_length, len(trimmed))
             trimmed_collections.append(trimmed)
@@ -132,7 +132,7 @@ class gpu_BERTopic:
             "sentence-transformers/all-MiniLM-L6-v2"
         ).to(device)
 
-        # Delete the keya nd associated values we do not need
+        # Delete the key and associated values we do not need
         del encoded_input_cudf['metadata']
 
         encoded_input_cudf['input_ids'] = self.fix_padding(
