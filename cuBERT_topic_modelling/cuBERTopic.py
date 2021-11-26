@@ -13,12 +13,13 @@ from utils.sparse_matrix_utils import top_n_idx_sparse
 from vectorizer.vectorizer import CountVecWrapper
 import math
 from transformers import AutoModel
-from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
+from torch.utils.data import TensorDataset, DataLoader
 import transformers
 from cudf.utils.hash_vocab_utils import hash_vocab
 hash_vocab('vocab.txt', 'voc_hash.txt')
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 
 class gpu_BERTopic:
     def __init__(self):
@@ -27,8 +28,8 @@ class gpu_BERTopic:
         self.original_topic_mapping = None
         self.new_topic_mapping = None
         self.final_topic_mapping = None
-        
-    #TODO: find a way to not iterate through the series (slow on large inputs)
+
+    # TODO: find a way to not iterate through the series (slow on large inputs)
     def fix_padding(self, sr):
         # Remove all the padding from the end
         trimmed_collections = list()
@@ -46,7 +47,7 @@ class gpu_BERTopic:
             'constant')
 
         # Add the required padding back
-        for a in range(1, len(trimmed_collections)):    
+        for a in range(1, len(trimmed_collections)):
             padded = cp.pad(
                 trimmed_collections[a],
                 (0, max_arr_length-len(trimmed_collections[a])),
@@ -55,14 +56,15 @@ class gpu_BERTopic:
             # Convert it back to a PyTorch tensor.
         tx2 = from_dlpack(first_arr_stack.toDlpack())
         return tx2
-        
-    #Mean Pooling - Take attention mask into account for correct averaging
+
+    # Mean Pooling - Take attention mask into account for correct averaging
     def mean_pooling(self, model_output, attention_mask):
-        #First element of model_output contains all token embeddings
+        # First element of model_output contains all token embeddings
         token_embeddings = model_output[0]
         input_mask_expanded = attention_mask.\
             unsqueeze(-1).\
-                expand(token_embeddings.size()).float()
+            expand(token_embeddings.size()).\
+            float()
         sum_embeddings = torch.sum(token_embeddings * input_mask_expanded, 1)
         sum_mask = torch.clamp(input_mask_expanded.sum(1), min=1e-9)
         return sum_embeddings / sum_mask
@@ -77,18 +79,22 @@ class gpu_BERTopic:
             embeddings (cupy.ndarray): corresponding sentence
             embeddings for the strings passed
         """
-        
-        cudf_tokenizer = SubwordTokenizer('voc_hash.txt',
-                             do_lower_case=True)
-        
-        #Tokenize sentences
-        encoded_input_cudf = cudf_tokenizer(sentences,
-                                        max_length=128,
-                                        max_num_rows=len(sentences),
-                                        padding='max_length',
-                                        return_tensors='pt',
-                                        truncation=True)
-        
+
+        cudf_tokenizer = SubwordTokenizer(
+            'voc_hash.txt',
+            do_lower_case=True
+        )
+
+        # Tokenize sentences
+        encoded_input_cudf = cudf_tokenizer(
+            sentences,
+            max_length=128,
+            max_num_rows=len(sentences),
+            padding='max_length',
+            return_tensors='pt',
+            truncation=True
+        )
+
         # Load AutoModel from huggingface model repository
         model_gpu = AutoModel.from_pretrained(
             "sentence-transformers/all-MiniLM-L6-v2"
@@ -104,7 +110,7 @@ class gpu_BERTopic:
             encoded_input_cudf['attention_mask']
         )
 
-        batch_size=64
+        batch_size = 64
 
         dataset = TensorDataset(
             encoded_input_cudf['input_ids'],
@@ -129,15 +135,19 @@ class gpu_BERTopic:
         model_stacked_lhs = torch.cat(model_o_ls)
         model_stacked_po = torch.cat(model_pooler_output)
 
-        bert_mod = transformers.modeling_outputs.\
+        bert_mod = transformers.\
+            modeling_outputs.\
             BaseModelOutputWithPoolingAndCrossAttentions(
-            last_hidden_state=model_stacked_lhs,
-            pooler_output=model_stacked_po
+                last_hidden_state=model_stacked_lhs,
+                pooler_output=model_stacked_po
+            )
+
+        # Perform pooling. In this case, mean pooling
+        sentence_embeddings_gpu = self.mean_pooling(
+            bert_mod,
+            encoded_input_cudf['attention_mask']
         )
 
-        #Perform pooling. In this case, mean pooling
-        sentence_embeddings_gpu = self.mean_pooling(bert_mod, encoded_input_cudf['attention_mask'])
-        
         return sentence_embeddings_gpu
 
     # Dimensionality reduction
@@ -252,7 +262,7 @@ class gpu_BERTopic:
         labels = sorted(docs_per_topics_topics.to_arrow().to_pylist())
         indices = top_n_idx_sparse(tf_idf, n)
         indices = indices.get()
-        
+
         top_n_words = {}
         for i, label in enumerate(labels):
             list_labels = []
@@ -265,7 +275,7 @@ class gpu_BERTopic:
                     else:
                         list_labels.append(("", 0.00001))
             top_n_words[label] = list_labels[::-1]
-        
+
         if mmr_flag:
             for topic, topic_words in top_n_words.items():
                 words = [word[0] for word in topic_words]
@@ -442,7 +452,7 @@ class gpu_BERTopic:
         )
 
         self.original_topic_mapping = self.original_topic_mapping.to_arrow().to_pylist()
-        self.final_topic_mapping = dict(zip(self.new_topic_mapping, 
+        self.final_topic_mapping = dict(zip(self.new_topic_mapping,
                                             self.original_topic_mapping))
         topic_sizes_df_columns[0] = self.new_topic_mapping
         topic_sizes_df_columns["Name"] = (
@@ -519,4 +529,3 @@ class gpu_BERTopic:
 
         self.update_topic_size(documents)
         return documents
-    
