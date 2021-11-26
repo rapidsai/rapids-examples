@@ -29,12 +29,23 @@ class gpu_BERTopic:
         self.new_topic_mapping = None
         self.final_topic_mapping = None
 
-    # TODO: find a way to not iterate through the series (slow on large inputs)
-    def fix_padding(self, sr):
+    # TODO: find a way to not iterate through the torch.Tensor
+    # (slow on large inputs)
+    def fix_padding(self, tnsr):
+        """Function to fix padding on a torch.Tensor object
+
+        Args:
+            tnsr ([torch.Tensor]): Tensor representing input_ids,
+            attention_mask
+
+        Returns:
+            [torch.Tensor]: trimmed stack of Tensor objects
+        """
+
         # Remove all the padding from the end
         trimmed_collections = list()
         max_arr_length = -1
-        for i in sr:
+        for i in tnsr:
             dx = to_dlpack(i)
             embeddings = cp.fromDlpack(dx)
             trimmed = cp.trim_zeros(embeddings, trim='b')
@@ -57,16 +68,29 @@ class gpu_BERTopic:
         tx2 = from_dlpack(first_arr_stack.toDlpack())
 
         # Taking care of case where we have only one sentence
-        # Then, we wouldn't call cp.vstack and get the right dimensions.
+        # Then, we need to reshape to get the right dimensions
+        # since in the other cases cp.vstack handles that.
 
         if len(tx2.shape) == 1:
             dim = tx2.shape[0]
-            tx2 = torch.reshape(tx2, (1,dim))
+            tx2 = torch.reshape(tx2, (1, dim))
 
         return tx2
 
     # Mean Pooling - Take attention mask into account for correct averaging
     def mean_pooling(self, model_output, attention_mask):
+        """Function to implement mean pooling on top of the AutoModel
+        See: https://www.sbert.net/examples/applications/computing-embeddings/README.html#sentence-embeddings-with-transformers
+
+        Args:
+            model_output \
+                (transformers.BaseModelOutputWithPoolingAndCrossAttentions): BERT model
+            attention_mask (torch.Tensor): torch.Tensor representing attention
+            mask values
+
+        Returns:
+            [torch.Tensor]: correct averaging of attention mask
+        """
         # First element of model_output contains all token embeddings
         token_embeddings = model_output[0]
         input_mask_expanded = attention_mask.\
