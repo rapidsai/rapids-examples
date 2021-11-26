@@ -55,6 +55,14 @@ class gpu_BERTopic:
             first_arr_stack = cp.vstack([first_arr_stack, padded])
             # Convert it back to a PyTorch tensor.
         tx2 = from_dlpack(first_arr_stack.toDlpack())
+
+        # Taking care of case where we have only one sentence
+        # Then, we wouldn't call cp.vstack and get the right dimensions.
+
+        if len(tx2.shape) == 1:
+            dim = tx2.shape[0]
+            tx2 = torch.reshape(tx2, (1,dim))
+
         return tx2
 
     # Mean Pooling - Take attention mask into account for correct averaging
