@@ -9,21 +9,27 @@ from cuBERTopic import gpu_BERTopic
 from ctfidf import ClassTFIDF
 from vectorizer.vectorizer import CountVecWrapper
 
-data_trivial = [
-    "This is the first document.",
-    "This document is the second document.",
-    "And this is the third one.",
-    "Is this the first document?",
-]
+@pytest.fixture
+def input_data_trivial():
+    data_trivial = [
+        "This is the first document.",
+        "This document is the second document.",
+        "And this is the third one.",
+        "Is this the first document?",
+    ]
 
-docs_df_trivial = pd.DataFrame(data_trivial, columns=["Document"])
-docs_df_trivial["Topic"] = [1, 2, 0, 1]
-docs_df_trivial = docs_df_trivial.sort_values("Topic")
+    docs_df_trivial = pd.DataFrame(data_trivial, columns=["Document"])
+    docs_df_trivial["Topic"] = [1, 2, 0, 1]
+    docs_df_trivial = docs_df_trivial.sort_values("Topic")
+    return docs_df_trivial
 
-data_big = fetch_20newsgroups(subset="all")["data"]
-docs_df_big = pd.DataFrame(data_big, columns=["Document"])
-docs_df_big["Topic"] = np.random.randint(0, 100, len(docs_df_big))
-docs_df_big = docs_df_big.sort_values("Topic")
+@pytest.fixture
+def input_data_big():
+    data_big = fetch_20newsgroups(subset="all")["data"]
+    docs_df_big = pd.DataFrame(data_big, columns=["Document"])
+    docs_df_big["Topic"] = np.random.randint(0, 100, len(docs_df_big))
+    docs_df_big = docs_df_big.sort_values("Topic")
+    return docs_df_big
 
 @pytest.fixture
 def input_newsgroup_dataset():
@@ -43,7 +49,9 @@ def extract_c_tf_idf_scores(documents: pd.DataFrame):
     return cpu_bertopic.c_tf_idf, words
 
 
-@pytest.mark.parametrize("docs_df", [(docs_df_trivial), (docs_df_big)])
+@pytest.mark.parametrize("docs_df",
+                         [pytest.lazy_fixture("input_data_trivial"),
+                          pytest.lazy_fixture("input_data_big")])
 def test_ctfidf_values(docs_df):
     """Test c-TF-IDF values
     Here we test the values against the _c_tf_idf method from BERTopic
