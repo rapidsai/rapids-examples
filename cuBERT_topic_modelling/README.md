@@ -71,6 +71,8 @@ conda env create -f environment.yml
 conda activate rapids-21.10 #The first line of the yml file sets the new environment's name
 ```
 
+To run existing tests, you can do `pytest -v` fromthe root directory, and more tests can be added under `tests` as well.
+
 ## Acknowledgement
 
 Our work ports the CPU implementation of the [BERTopic library](https://github.com/MaartenGr/BERTopic) to a python-based GPU backend using NVIDIA RAPIDS.
