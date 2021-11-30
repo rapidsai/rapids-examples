@@ -11,54 +11,6 @@ import transformers
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-# TODO: find a way to not iterate through the torch.Tensor
-# using built-in CuPy/cuDF methods
-# def fix_padding(tnsr):
-#     """Function to fix padding on a torch.Tensor object
-
-#     Args:
-#         tnsr ([torch.Tensor]): Tensor representing input_ids,
-#         attention_mask
-
-#     Returns:
-#         [torch.Tensor]: trimmed stack of Tensor objects
-#     """
-
-#     # Remove all the padding from the end
-#     trimmed_collections = list()
-#     max_arr_length = -1
-#     dx = to_dlpack(tnsr)
-#     embeddings_collecton = cp.fromDlpack(dx)
-#     for embeddings in embeddings_collecton:
-#         trimmed = cp.trim_zeros(embeddings, trim='b')
-#         max_arr_length = max(max_arr_length, len(trimmed))
-#         trimmed_collections.append(trimmed)
-
-#     first_arr_stack = cp.pad(
-#         trimmed_collections[0],
-#         (0, max_arr_length-len(trimmed_collections[0])),
-#         'constant')
-
-#     # Add the required padding back
-#     for a in range(1, len(trimmed_collections)):
-#         padded = cp.pad(
-#             trimmed_collections[a],
-#             (0, max_arr_length-len(trimmed_collections[a])),
-#             'constant')
-#         first_arr_stack = cp.vstack([first_arr_stack, padded])
-#         # Convert it back to a PyTorch tensor.
-#     tx2 = from_dlpack(first_arr_stack.toDlpack())
-
-#     # Taking care of case where we have only one sentence
-#     # Then, we need to reshape to get the right dimensions
-#     # since in the other cases cp.vstack handles that.
-
-#     if len(tx2.shape) == 1:
-#         dim = tx2.shape[0]
-#         tx2 = torch.reshape(tx2, (1, dim))
-
-#     return tx2
-
 # Mean Pooling - Take attention mask into account for correct averaging
 def mean_pooling(model_output, attention_mask):
     """Function to implement mean pooling on top of the AutoModel
@@ -116,13 +68,6 @@ def create_embeddings(sentences):
 
     # Delete the key and associated values we do not need
     del encoded_input_cudf['metadata']
-
-    # encoded_input_cudf['input_ids'] = fix_padding(
-    #     encoded_input_cudf['input_ids']
-    # )
-    # encoded_input_cudf['attention_mask'] = fix_padding(
-    #     encoded_input_cudf['attention_mask']
-    # )
 
     batch_size = 64
 
