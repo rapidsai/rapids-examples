@@ -60,6 +60,17 @@ Now you can do `import cuBERTopic` and you're good to go!
 
 An [example](berttopic_example.ipynb) notebook is provided, which goes through the installation, as well as comparing response using [BERTopic](https://github.com/MaartenGr/BERTopic).
 
+## Development
+
+Contributions to this codebase are welcome! 
+
+`environment.yml` file has been provided which included all the development dependencies. Using this file, you can create your own dev environment by running: 
+
+```bash
+conda env create -f environment.yml
+conda activate rapids-21.10 #The first line of the yml file sets the new environment's name
+```
+
 ## Acknowledgement
 
 Our work ports the CPU implementation of the [BERTopic library](https://github.com/MaartenGr/BERTopic) to a python-based GPU backend using NVIDIA RAPIDS.
