@@ -1,11 +1,6 @@
 import numpy as np
-from sklearn.datasets import fetch_20newsgroups
 import pytest
 from cuBERTopic import gpu_BERTopic
-
-newsgroup_docs = fetch_20newsgroups(
-    subset="all", remove=("headers", "footers", "quotes")
-)["data"][:1000]
 
 @pytest.mark.parametrize("embeddings,shape", [(np.random.rand(100, 68), 100),
                                               (np.random.rand(1000, 5), 1000)])

@@ -1,6 +1,6 @@
-from cuBERTopic import gpu_BERTopic
 import cudf
 import torch
+from embedding_extraction import create_embeddings
 
 def test_extract_embeddings():
     """Test SentenceTransformer
@@ -9,11 +9,10 @@ def test_extract_embeddings():
     the correct shape should be outputted. The embeddings by itself
     should not exceed certain values as a sanity check.
     """
-    gpu_topic = gpu_BERTopic()
-    single_embedding = gpu_topic.create_embeddings(
+    single_embedding = create_embeddings(
         cudf.Series(["a document"])
     )
-    multiple_embeddings = gpu_topic.create_embeddings(
+    multiple_embeddings = create_embeddings(
         cudf.Series(["a document",
                      "another document"])
     )

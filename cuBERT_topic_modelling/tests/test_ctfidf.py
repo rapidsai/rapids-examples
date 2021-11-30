@@ -16,10 +16,6 @@ data_trivial = [
     "Is this the first document?",
 ]
 
-newsgroup_docs = fetch_20newsgroups(
-    subset="all", remove=("headers", "footers", "quotes")
-)["data"][:1000]
-
 docs_df_trivial = pd.DataFrame(data_trivial, columns=["Document"])
 docs_df_trivial["Topic"] = [1, 2, 0, 1]
 docs_df_trivial = docs_df_trivial.sort_values("Topic")
@@ -29,6 +25,12 @@ docs_df_big = pd.DataFrame(data_big, columns=["Document"])
 docs_df_big["Topic"] = np.random.randint(0, 100, len(docs_df_big))
 docs_df_big = docs_df_big.sort_values("Topic")
 
+@pytest.fixture
+def input_newsgroup_dataset():
+    newsgroup_docs = fetch_20newsgroups(subset="all",
+                                        remove=("headers", "footers", "quotes")
+                                        )["data"][:1000]
+    return newsgroup_docs
 
 def extract_c_tf_idf_scores(documents: pd.DataFrame):
     cpu_bertopic = BERTopic()
@@ -54,15 +56,15 @@ def test_ctfidf_values(docs_df):
     np.testing.assert_almost_equal(X[0].toarray().get(), tfidf_score.toarray())
 
 
-def test_ctfidf_general():
+def test_ctfidf_general(input_newsgroup_dataset):
     """Test c-TF-IDF general
     Test whether the c-TF-IDF matrix is correctly calculated.
     This includes the general shape of the matrix as well as the
     possible values that could occupy the matrix.
     """
     nr_topics = 10
-    docs_df = cudf.DataFrame(newsgroup_docs, columns=["Document"])
-    docs_df["Topic"] = np.random.randint(-1, nr_topics, len(newsgroup_docs))
+    docs_df = cudf.DataFrame(input_newsgroup_dataset, columns=["Document"])
+    docs_df["Topic"] = np.random.randint(-1, nr_topics, len(input_newsgroup_dataset))
 
     count = CountVecWrapper(ngram_range=(1, 1))
     X = count.fit_transform(docs_df)
@@ -70,7 +72,7 @@ def test_ctfidf_general():
     multiplier = None
 
     transformer = ClassTFIDF().fit(
-        X, n_samples=len(newsgroup_docs), multiplier=multiplier
+        X, n_samples=len(input_newsgroup_dataset), multiplier=multiplier
     )
 
     c_tf_idf = transformer.transform(X)

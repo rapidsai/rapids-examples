@@ -1,19 +1,18 @@
 from transformers import AutoTokenizer, AutoModel
 import torch
 import numpy as np
-from cuBERTopic import gpu_BERTopic
 from sklearn.datasets import fetch_20newsgroups
 import cudf
 import pytest
+from embedding_extraction import mean_pooling, create_embeddings
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # Sentences we want sentence embeddings for
-
-# TODO: sentence number 11927 is being encoded different in AutoTokenizer
-# and cuDF's SubwordTokenizer, look into that - this is causing high margin of error.
-
-sentences = fetch_20newsgroups(subset="all")["data"][:10000]
+@pytest.fixture
+def input_sentences_fixture():
+    sentences = fetch_20newsgroups(subset="all")["data"]
+    return sentences
 
 
 def run_embedding_creation_transformers(sentences):
@@ -31,21 +30,6 @@ def run_embedding_creation_transformers(sentences):
         return_tensors="pt"
     )
 
-    # Mean Pooling - Take attention mask into account for correct averaging
-    def mean_pooling(model_output, attention_mask):
-        token_embeddings = model_output[
-            0
-        ]  # First element of model_output contains all token embeddings
-        input_mask_expanded = (
-            attention_mask
-            .unsqueeze(-1)
-            .expand(token_embeddings.size())
-            .float()
-        )
-        sum_embeddings = torch.sum(token_embeddings * input_mask_expanded, 1)
-        sum_mask = torch.clamp(input_mask_expanded.sum(1), min=1e-9)
-        return sum_embeddings / sum_mask
-
     model = AutoModel.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
 
     # Compute token embeddings
@@ -60,13 +44,17 @@ def run_embedding_creation_transformers(sentences):
 
     return sentence_embeddings
 
-@pytest.mark.parametrize("sentences", [(sentences)])
-def test_custom_tokenizer(sentences):
-    gpu_topic = gpu_BERTopic()
-    sentence_embeddings_gpu = gpu_topic.create_embeddings(
-        cudf.Series(sentences)
+@pytest.mark.xfail(
+    reason="sentence number 11927 is being encoded different in \
+        AutoTokenizer and cuDF's SubwordTokenizer",
+    strict=True)
+def test_custom_tokenizer(input_sentences_fixture):
+    sentence_embeddings_gpu = create_embeddings(
+        cudf.Series(input_sentences_fixture)
     )
-    sentence_embeddings = run_embedding_creation_transformers(sentences)
+    sentence_embeddings = run_embedding_creation_transformers(
+        input_sentences_fixture
+    )
     np.testing.assert_array_almost_equal(
         sentence_embeddings.to("cpu").numpy(),
         sentence_embeddings_gpu.to("cpu").numpy()

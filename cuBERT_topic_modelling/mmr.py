@@ -37,25 +37,26 @@ def mmr(
     word_similarity = pairwise_distances(word_embeddings, metric="cosine")
 
     # Initialize candidates and already choose best keyword/keyphras
-    keywords_idx = [cp.argmax(word_doc_similarity).get()]
-    candidates_idx = [i for i in range(len(words)) if i != keywords_idx[0]]
-
+    keywords_idx = cp.argmax(word_doc_similarity)
+    candidates_idx = [i for i in range(len(words)) if i != cp.take(keywords_idx, 0)]
     for _ in range(top_n - 1):
         # Extract similarities within candidates and
         # between candidates and selected keywords/phrases
         candidate_similarities = word_doc_similarity[candidates_idx, :]
         target_similarities = cp.max(
-            word_similarity[candidates_idx][:, keywords_idx], axis=1
+            word_similarity[candidates_idx][:, keywords_idx]
         )
 
         # Calculate MMR
         mmr = (
             1 - diversity
         ) * candidate_similarities - diversity * target_similarities.reshape(-1, 1)
-        mmr_idx = candidates_idx[cp.argmax(mmr).get()]
-
+        # mmr_idx = candidates_idx[cp.argmax(mmr).get()]
+        mmr_idx = cp.take(cp.array(candidates_idx), cp.argmax(mmr))
         # Update keywords & candidates
-        keywords_idx.append(mmr_idx)
+        cp.append(keywords_idx, mmr_idx)
         candidates_idx.remove(mmr_idx)
 
-    return [words[idx] for idx in keywords_idx]
+
+    # a = cp.take(words, keywords_idx)
+    return [words[idx] for idx in [keywords_idx.item()]]
