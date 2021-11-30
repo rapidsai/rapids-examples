@@ -31,10 +31,10 @@ def mmr(
     """
 
     # Extract similarity within words, and between words and the document
-    word_doc_similarity = pairwise_distances(
+    word_doc_similarity = 1 - pairwise_distances(
         word_embeddings, doc_embedding, metric="cosine"
     )
-    word_similarity = pairwise_distances(word_embeddings, metric="cosine")
+    word_similarity = 1 - pairwise_distances(word_embeddings, metric="cosine")
 
     # Initialize candidates and already choose best keyword/keyphras
     keywords_idx = cp.argmax(word_doc_similarity)
