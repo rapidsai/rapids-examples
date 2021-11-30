@@ -8,9 +8,49 @@ Currently, [BERTopic](https://github.com/MaartenGr/BERTopic) library in general 
 
 ![Overview of pipeline design](cuBERTopic.jpg)
 
+### Code organization
+
+```
+cuBERT_topic_modelling
+│   README.md
+│   berttopic_example.ipynb
+|   ctfidf.py
+|   cuBERTopic.jpg
+|   cuBERTopic.py
+|   embedding_extraction.py
+|   mmr.py
+|   setup.py
+|   voc_hash.txt
+|   vocab.txt
+│
+└───tests
+│   │   test_ctfidf.py
+│   │   test_data_preprocess.py
+│   │   test_embeddings_extraction.py
+|   |   test_fit_transform.py
+|   |   test_hdbscan_clustering.py
+|   |   test_subwordtokenizer.py
+|   |   test_umap_dr.py
+│   
+└───utils
+|    │   sparse_matrix_utils.py
+│   
+└───vectorizer
+    │   vectorizer.py
+```
+
 ## Installation
 
-`cuBERTopic` runs on `cudf` and `cuml` which can be installed using instructions[here](https://rapids.ai/start.html) and `cupy` which can be installed using instructions [here](https://docs.cupy.dev/en/stable/install.html)
+`cuBERTopic` runs on `cudf` and `cuml` which can be installed using instructions[here](https://rapids.ai/start.html) and `cupy` which can be installed using instructions [here](https://docs.cupy.dev/en/stable/install.html). These packages run on NVIDIA GPU and CUDA and to determine the version you should install, you can check the CUDA version in your system (eg. do `nvidia-smi`). Here we assume the user has `conda` (or `mamba`) installed.
+
+For example, if you have CUDA 11.2 and Ubuntu 20.04, then run:
+
+```bash
+conda create -n rapids-21.12 -c rapidsai-nightly -c nvidia -c conda-forge \
+    rapids=21.12 python=3.8 cudatoolkit=11.2
+conda activate rapids-21.12
+pip install cupy-cuda112
+```
 
 After installing the dependencies, clone the repository and run `pip install -e .` from the root directory. 
 
