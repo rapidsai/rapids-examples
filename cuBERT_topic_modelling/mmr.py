@@ -1,14 +1,13 @@
-from typing import List
 import cupy as cp
 from cuml.metrics import pairwise_distances
 
 
 def mmr(
-    doc_embedding: cp.ndarray,
-    word_embeddings: cp.ndarray,
-    words: List[str],
-    top_n: int = 5,
-    diversity: float = 0.8,
+    doc_embedding,
+    word_embeddings,
+    words,
+    top_n = 5,
+    diversity = 0.8,
 ):
 
     """
@@ -38,25 +37,31 @@ def mmr(
 
     # Initialize candidates and already choose best keyword/keyphras
     keywords_idx = cp.argmax(word_doc_similarity)
-    candidates_idx = [i for i in range(len(words)) if i != cp.take(keywords_idx, 0)]
-    for _ in range(top_n - 1):
-        # Extract similarities within candidates and
-        # between candidates and selected keywords/phrases
+    target = cp.take(keywords_idx, 0)
+    candidates_idx = [i for i in range(len(words)) if i != target]
+    for i in range(top_n - 1):
         candidate_similarities = word_doc_similarity[candidates_idx, :]
-        target_similarities = cp.max(
-            word_similarity[candidates_idx][:, keywords_idx]
-        )
-
+        if i == 0:
+            first_row = cp.reshape(
+                word_similarity[candidates_idx][:, keywords_idx],
+                (word_similarity[candidates_idx][:, keywords_idx].shape[0], 1)
+            )
+            target_similarities = cp.max(
+                first_row, axis=1
+            ) 
+        else:
+            target_similarities = cp.max(
+                    word_similarity[candidates_idx][:, keywords_idx], axis=1
+                )
         # Calculate MMR
         mmr = (
             1 - diversity
         ) * candidate_similarities - diversity * target_similarities.reshape(-1, 1)
-        # mmr_idx = candidates_idx[cp.argmax(mmr).get()]
+        
         mmr_idx = cp.take(cp.array(candidates_idx), cp.argmax(mmr))
+        
         # Update keywords & candidates
-        cp.append(keywords_idx, mmr_idx)
+        keywords_idx = cp.append(keywords_idx, mmr_idx)
         candidates_idx.remove(mmr_idx)
 
-
-    # a = cp.take(words, keywords_idx)
-    return [words[idx] for idx in [keywords_idx.item()]]
+    return [words[idx] for idx in keywords_idx.get()]
