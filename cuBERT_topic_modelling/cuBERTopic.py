@@ -306,7 +306,8 @@ class gpu_BERTopic:
             The top n words for a specific word and its respective
             c-TF-IDF scores
         """
-        return self.top_n_words[int(self.final_topic_mapping[topic])][:num_words]
+
+        return self.top_n_words[int(self.final_topic_mapping[1][topic+1])][:num_words]
 
     def get_topic_info(self):
         """Get information about each topic including its id, frequency, and name
@@ -321,14 +322,18 @@ class gpu_BERTopic:
             "_", expand=True
         )[[0, 1, 2, 3, 4]]
         self.original_topic_mapping = topic_sizes_df_columns[0]
-        self.new_topic_mapping = sorted(
-            self.topic_sizes_df["Topic"].to_pandas()
-        )
 
-        self.original_topic_mapping = self.original_topic_mapping.to_arrow().to_pylist()
-        self.final_topic_mapping = dict(zip(self.new_topic_mapping,
-                                            self.original_topic_mapping))
-        topic_sizes_df_columns[0] = self.new_topic_mapping
+        self.new_topic_mapping = self.topic_sizes_df["Topic"].sort_values()
+
+        self.original_topic_mapping = self.original_topic_mapping.astype("int64")
+        new_mapping_values = self.new_topic_mapping.values
+        new_mapping_series = cudf.Series(new_mapping_values)
+        original_mapping_series = cudf.Series(self.original_topic_mapping.values)
+        self.final_topic_mapping = cudf.concat([new_mapping_series,
+                                                original_mapping_series],
+                                                axis=1)
+
+        topic_sizes_df_columns[0] = new_mapping_values
         topic_sizes_df_columns["Name"] = (
             topic_sizes_df_columns[0].astype("str")
             + "_"
