@@ -198,56 +198,6 @@ class gpu_BERTopic:
         )
         return topic_sizes
 
-    # Topic reduction
-    def reduce_topics(self, num_topics, tf_idf, docs_df):
-        """Reduce topics to num_topics
-        Arguments:
-            tf_idf: c_tf_idf matrix obtained
-            docs_df: Dataframe with documents and their corresponding IDs
-            and Topics
-        Returns:
-            docs_df: Updated dataframe with documents and the reduced
-            number of Topics
-            top_n_words: top n words based on the updated dataFrame
-        """
-        for i in range(num_topics):
-            # Calculate cosine similarity
-            similarities = pairwise_distances(tf_idf, metric="cosine")
-            cp.fill_diagonal(similarities, 0)
-
-            # Extract label to merge into and from where
-            topic_sizes = (
-                docs_df.groupby(["Topic"])
-                .count()
-                .sort_values("Document", ascending=False)
-                .reset_index()
-            )
-            topic_to_merge = topic_sizes.iloc[-1]["Topic"]
-            topic_to_merge_into = cp.argmax(
-                similarities[topic_to_merge + 1]) - 1
-
-            # Adjust topics
-            topic_to_merge_into_series = cudf.Series(topic_to_merge_into)
-            docs_df.loc[
-                docs_df["Topic"] == topic_to_merge, "Topic"
-            ] = topic_to_merge_into_series
-            old_topics = docs_df.Topic.unique().sort_values()
-            old_topics = old_topics.to_arrow().to_pylist()
-            map_topics = {
-                old_topic: index - 1 for index,
-                old_topic in enumerate(old_topics)
-            }
-            docs_df["Topic"] = docs_df.Topic.map(map_topics)
-            docs_per_topics_topics = docs_df["Topic"].unique()
-
-            # Calculate new topic words
-            tf_idf, count = self.new_c_tf_idf(docs_df, len(docs_df))
-            top_n_words, name_repr = self.extract_top_n_words_per_topic(
-                tf_idf, count, docs_per_topics_topics, n=30
-            )
-
-            return docs_df, top_n_words
-
     def fit_transform(self, data):
         """Fit the models on a collection of documents, generate topics, and return
         the docs with topics
