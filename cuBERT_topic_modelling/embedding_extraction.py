@@ -47,7 +47,7 @@ def create_embeddings(sentences):
     """
 
     cudf_tokenizer = SubwordTokenizer(
-        'voc_hash.txt',
+        'vocab/voc_hash.txt',
         do_lower_case=True
     )
 

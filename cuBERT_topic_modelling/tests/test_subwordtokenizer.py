@@ -61,7 +61,7 @@ def fix_padding(tnsr):
 # Sentences we want sentence embeddings for
 @pytest.fixture
 def input_sentences_fixture():
-    sentences = fetch_20newsgroups(subset="all")["data"][:10000]
+    sentences = fetch_20newsgroups(subset="all")["data"]
     return sentences
 
 
@@ -118,7 +118,7 @@ def test_custom_tokenizer(input_sentences_fixture):
     strict=True)
 def test_encoded_input(input_sentences_fixture):
     cudf_tokenizer = SubwordTokenizer(
-        'voc_hash.txt',
+        'vocab/voc_hash.txt',
         do_lower_case=True
     )
     input_sentences_fixture_cudf = cudf.Series(input_sentences_fixture)
