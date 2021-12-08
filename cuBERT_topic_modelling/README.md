@@ -41,7 +41,7 @@ cuBERT_topic_modelling
 
 ## Installation
 
-`cuBERTopic` runs on `cudf` and `cuml` which can be installed using instructions[here](https://rapids.ai/start.html). These packages run on NVIDIA GPU and CUDA and to determine the version you should install, you can check the CUDA version in your system (eg. do `nvidia-smi`). Here we assume the user has `conda` (or `mamba`) installed.
+`cuBERTopic` runs on `cudf` and `cuml` which can be installed using instructions [here](https://rapids.ai/start.html). These packages run on NVIDIA GPU and CUDA and to determine the version you should install, you can check the CUDA version in your system (eg. do `nvidia-smi`). Here we assume the user has `conda` (or `mamba`) installed.
 
 For example, if you have CUDA 11.2 and Ubuntu 20.04, then run:
 
