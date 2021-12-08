@@ -202,7 +202,7 @@ class gpu_BERTopic:
         """Fit the models on a collection of documents, generate topics, and return
         the docs with topics
         Arguments:
-            documents: A list of documents to fit on
+            data: A list of documents to fit on
 
         Returns:
             predictions: Topic predictions for each documents
@@ -210,7 +210,7 @@ class gpu_BERTopic:
         """
 
         documents = cudf.DataFrame(
-            {"Document": data, "ID": range(len(data)), "Topic": None}
+            {"Document": data, "ID": cp.arange(len(data)), "Topic": None}
         )
 
         # Extract embeddings
@@ -243,7 +243,7 @@ class gpu_BERTopic:
             name_repr
         )
         self.top_n_words = top_n_words
-        predictions = documents.Topic.to_arrow().to_pylist()
+        predictions = documents.Topic
 
         return (predictions, probabilities)
 
@@ -257,7 +257,7 @@ class gpu_BERTopic:
             c-TF-IDF scores
         """
 
-        return self.top_n_words[int(self.final_topic_mapping[1][topic+1])][:num_words]
+        return self.top_n_words[int(self.final_topic_mapping[0][topic+1])][:num_words]
 
     def get_topic_info(self):
         """Get information about each topic including its id, frequency, and name
@@ -277,8 +277,8 @@ class gpu_BERTopic:
 
         self.original_topic_mapping = self.original_topic_mapping.astype("int64")
         new_mapping_values = self.new_topic_mapping.values
-        new_mapping_series = cudf.Series(new_mapping_values)
-        original_mapping_series = cudf.Series(self.original_topic_mapping.values)
+        new_mapping_series = self.new_topic_mapping.reset_index(drop=True)
+        original_mapping_series = self.original_topic_mapping.reset_index(drop=True)
         self.final_topic_mapping = cudf.concat([new_mapping_series,
                                                 original_mapping_series],
                                                 axis=1)

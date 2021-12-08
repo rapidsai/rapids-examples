@@ -2,16 +2,19 @@ import pandas as pd
 import cudf
 import re
 from vectorizer.vectorizer import CountVecWrapper
+import pytest
 
+@pytest.fixture
+def input_data_docs_df():
+    data_trivial = [
+        "This is the first document.",
+        "This document is the second document.",
+        "And this is the third one.",
+        "Is this the first document?",
+    ]
 
-data = [
-    "This is the first document.",
-    "This document is the second document.",
-    "And this is the third one.",
-    "Is this the first document?",
-]
-
-docs_df = pd.DataFrame(data, columns=["Document"])
+    docs_df = pd.DataFrame(data_trivial, columns=["Document"])
+    return docs_df
 
 
 def preprocess_text_bertopic(documents):
@@ -28,8 +31,8 @@ def preprocess_text_bertopic(documents):
     return cudf.Series(cleaned_documents, name="Document")
 
 
-def test_trivia_case():
-    docs_df_gpu = cudf.from_pandas(docs_df)
+def test_trivia_case(input_data_docs_df):
+    docs_df_gpu = cudf.from_pandas(input_data_docs_df)
     clean_docs_bertopic = preprocess_text_bertopic(docs_df_gpu["Document"])
     cv = CountVecWrapper()
     clean_docs_gpu = cv.preprocess_text_gpu(docs_df_gpu["Document"])

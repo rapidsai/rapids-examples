@@ -1,5 +1,5 @@
 from cuml.feature_extraction._tfidf import TfidfTransformer
-import cupyx.scipy.sparse as sp
+import cupyx.scipy.sparse as cp_sparse
 import cupy as cp
 from cuml.common.sparsefuncs import csr_row_normalize_l1
 
@@ -22,7 +22,7 @@ class ClassTFIDF(TfidfTransformer):
         super(ClassTFIDF, self).__init__(*args, **kwargs)
 
     def fit(self,
-            X: sp.csr_matrix,
+            X: cp_sparse.csr_matrix,
             n_samples: int,
             multiplier: cp.ndarray = None):
         """Learn the idf vector (global term weights).
@@ -30,8 +30,8 @@ class ClassTFIDF(TfidfTransformer):
             X: A matrix of term/token counts.
             n_samples: Number of total documents
         """
-        if not sp.issparse(X):
-            X = sp.csr_matrix(X)
+        if not cp_sparse.issparse(X):
+            X = cp_sparse.csr_matrix(X)
         dtype = cp.float64
 
         if self.use_idf:
@@ -41,7 +41,7 @@ class ClassTFIDF(TfidfTransformer):
             idf = cp.log(avg_nr_samples / df)
             if multiplier is not None:
                 idf = idf * multiplier
-            self._idf_diag = sp.diags(
+            self._idf_diag = cp_sparse.diags(
                 idf,
                 offsets=0,
                 shape=(n_features, n_features),
@@ -51,7 +51,7 @@ class ClassTFIDF(TfidfTransformer):
 
         return self
 
-    def transform(self, X: sp.csr_matrix, copy=True):
+    def transform(self, X: cp_sparse.csr_matrix, copy=True):
         """Transform a count-based matrix to c-TF-IDF
         Arguments:
             X (sparse matrix): A matrix of term/token counts.
