@@ -15,13 +15,10 @@ cuBERT_topic_modelling
 │   README.md
 │   berttopic_example.ipynb
 |   ctfidf.py
-|   cuBERTopic.jpg
 |   cuBERTopic.py
 |   embedding_extraction.py
 |   mmr.py
 |   setup.py
-|   voc_hash.txt
-|   vocab.txt
 │
 └───tests
 │   │   test_ctfidf.py
@@ -29,14 +26,26 @@ cuBERT_topic_modelling
 │   │   test_embeddings_extraction.py
 |   |   test_fit_transform.py
 |   |   test_hdbscan_clustering.py
+|   |   test_mmr.py
 |   |   test_subwordtokenizer.py
 |   |   test_umap_dr.py
 │   
 └───utils
-|    │   sparse_matrix_utils.py
+|   │   sparse_matrix_utils.py
 │   
 └───vectorizer
-    │   vectorizer.py
+|   │   vectorizer.py
+| 
+└───conda
+|   │   environment.yml
+|
+└───images
+|   │   cuBERTopic.jpg
+|
+└───vocab
+|   │   voc_has.txt
+|   |   vocab.txt
+|
 ```
 
 ## Installation
