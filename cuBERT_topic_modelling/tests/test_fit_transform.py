@@ -10,6 +10,12 @@ import cudf
 from sklearn.datasets import fetch_20newsgroups
 from sentence_transformers import SentenceTransformer
 from cuBERTopic import gpu_BERTopic
+import pytest
+
+@pytest.fixture
+def input_data_docs():
+    docs = fetch_20newsgroups(subset="all")["data"]
+    return docs
 
 
 class berttopic_wrapper(BERTopic):
@@ -79,8 +85,8 @@ class berttopic_wrapper(BERTopic):
 
 class gpubertopic_wrapper(gpu_BERTopic):
     def fit_transform(self, data):
-        """Fit the models on a collection of documents, generate topics, and return
-        the docs with topics
+        """Fit the models on a collection of documents, generate topics,
+        and return the docs with topics
         Arguments:
             documents: A list of documents to fit on
 
@@ -95,12 +101,11 @@ class gpubertopic_wrapper(gpu_BERTopic):
 
         documents = pd.read_parquet("berttopic_docs")
         documents = cudf.from_pandas(documents)
+        self.update_topic_size(documents)
 
         del umap_embeddings
 
-        documents = self.sort_mappings_by_frequency(documents)
-
-        tf_idf, count, docs_per_topics_topics, docs_df = self.create_topics(
+        tf_idf, count, docs_per_topics_topics = self.create_topics(
             documents
         )
         top_n_words, name_repr = self.extract_top_n_words_per_topic(
@@ -116,27 +121,22 @@ class gpubertopic_wrapper(gpu_BERTopic):
         return (predictions, probabilities)
 
 
-docs = fetch_20newsgroups(subset="all")["data"]
-
-
-def test_fit_transform():
+def test_fit_transform(input_data_docs):
     model_sbert = SentenceTransformer("all-MiniLM-L6-v2")
     embeddings = model_sbert.encode(
-        docs,
+        input_data_docs,
         show_progress_bar=True,
         batch_size=64,
         convert_to_numpy=True,
     )
     topic_model = berttopic_wrapper()
-    topics_cpu, probs_cpu = topic_model.fit_transform(docs, embeddings)
+    _, probs_cpu = topic_model.fit_transform(input_data_docs, embeddings)
 
     gpu_topic = gpubertopic_wrapper()
-    topics_gpu, probs_gpu = gpu_topic.fit_transform(docs)
-
-    assert probs_gpu.all() == probs_cpu.all()
-
-    a = topic_model.get_topic_info()[["Count", "Name"]].reset_index(drop=True)
-    b = gpu_topic.get_topic_info()[["Count", "Name"]].reset_index(drop=True)
+    _, probs_gpu = gpu_topic.fit_transform(input_data_docs)
+    
+    a = topic_model.get_topic_info().reset_index(drop=True)
+    b = gpu_topic.get_topic_info().reset_index(drop=True)
 
     b_gpu = b.Name.str.split("_", expand=True)[[1, 2, 3, 4]]
     b_gpu["Count"] = b["Count"]
@@ -151,7 +151,7 @@ def test_fit_transform():
         by=["Count", 1, 2, 3, 4], ascending=False).reset_index(
         drop=True
     )
-
+    assert probs_gpu.all() == probs_cpu.all()
     assert sum(a_cpu["Count"] == b_gpu["Count"]) == len(a_cpu) == len(b_gpu)
     pd.testing.assert_series_equal(
         a_cpu[1][:100], b_gpu[1][:100],
@@ -173,3 +173,4 @@ def test_fit_transform():
         a_cpu[:100], b_gpu[:100],
         check_dtype=False
     )
+    
