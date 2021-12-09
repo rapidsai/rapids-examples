@@ -3,7 +3,6 @@ import cuml
 import cudf
 from cuml.neighbors import NearestNeighbors
 from cuml.manifold import UMAP
-from cuml.metrics import pairwise_distances
 import cupy as cp
 from ctfidf import ClassTFIDF
 from mmr import mmr
@@ -104,12 +103,11 @@ class gpu_BERTopic:
             count: object of class CountVecWrapper, which inherits from
             CountVectorizer
             docs_per_topics_topics: A list of unique topic labels
-            docs_df: cudf DataFrame created from data
         """
         docs_per_topics_topics = docs_df["Topic"].unique()
 
         tf_idf, count = self.new_c_tf_idf(docs_df, len(docs_df))
-        return tf_idf, count, docs_per_topics_topics, docs_df
+        return tf_idf, count, docs_per_topics_topics
 
     # Topic representation
     def extract_top_n_words_per_topic(
@@ -230,9 +228,8 @@ class gpu_BERTopic:
 
         del umap_embeddings
 
-        documents = self.sort_mappings_by_frequency(documents)
-
-        tf_idf, count, docs_per_topics_topics, docs_df = self.create_topics(
+        # Topic representation
+        tf_idf, count, docs_per_topics_topics = self.create_topics(
             documents
         )
         top_n_words, name_repr = self.extract_top_n_words_per_topic(
@@ -257,7 +254,9 @@ class gpu_BERTopic:
             c-TF-IDF scores
         """
 
-        return self.top_n_words[int(self.final_topic_mapping[0][topic+1])][:num_words]
+        return self.top_n_words[
+            int(self.final_topic_mapping[0][topic+1])
+        ][:num_words]
 
     def get_topic_info(self):
         """Get information about each topic including its id, frequency, and name
@@ -275,13 +274,18 @@ class gpu_BERTopic:
 
         self.new_topic_mapping = self.topic_sizes_df["Topic"].sort_values()
 
-        self.original_topic_mapping = self.original_topic_mapping.astype("int64")
+        self.original_topic_mapping = self.original_topic_mapping.astype(
+            "int64"
+        )
         new_mapping_values = self.new_topic_mapping.values
         new_mapping_series = self.new_topic_mapping.reset_index(drop=True)
-        original_mapping_series = self.original_topic_mapping.reset_index(drop=True)
+        original_mapping_series = self.original_topic_mapping.reset_index(
+            drop=True
+        )
         self.final_topic_mapping = cudf.concat([new_mapping_series,
                                                 original_mapping_series],
-                                                axis=1)
+                                                axis=1
+                                                )
 
         topic_sizes_df_columns[0] = new_mapping_values
         topic_sizes_df_columns["Name"] = (
@@ -314,47 +318,3 @@ class gpu_BERTopic:
             .sort_values("Count", ascending=False)
         )
         self.topic_sizes_df = topic_sizes
-
-    def sort_mappings_by_frequency(self, documents):
-        """Reorder mappings by their frequency.
-        For example, if topic 88 was mapped to topic
-        5 and topic 5 turns out to be the largest topic,
-        then topic 5 will be topic 0. The second largest,
-        will be topic 1, etc.
-        If there are no mappings since no reduction of topics
-        took place, then the topics will simply be ordered
-        by their frequency and will get the topic ids based
-        on that order.
-        This means that -1 will remain the outlier class, and
-        that the rest of the topics will be in descending order
-        of ids and frequency.
-        Arguments:
-            documents: Dataframe with documents and their
-            corresponding IDs and Topics
-        Returns:
-            documents: Updated dataframe with documents and the mapped
-                       and re-ordered topic ids
-        """
-
-        self.update_topic_size(documents)
-        # Map topics based on frequency
-        df = (
-            cudf.DataFrame(
-                self.topic_sizes_df.to_pandas().to_dict(),
-                columns=["Old_Topic", "Size"]
-            )
-            .sort_values("Size", ascending=False)
-            .to_pandas()
-        )
-        df = df[df.Old_Topic != -1]
-        sorted_topics = {**{-1: -1}, **dict(zip(df.Old_Topic, range(len(df))))}
-
-        # Map documents
-        documents.Topic = (
-            documents.Topic.map(
-                sorted_topics
-            ).fillna(documents.Topic).astype(int)
-        )
-
-        self.update_topic_size(documents)
-        return documents
