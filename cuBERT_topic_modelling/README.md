@@ -60,26 +60,31 @@ conda create -n rapids-21.12 -c rapidsai-nightly -c nvidia -c conda-forge \
 conda activate rapids-21.12
 ```
 
-After installing the dependencies, clone the repository and run `pip install -e .` from the root directory. 
+We also provide a conda environment file [here](conda/environment.yml), which you can use to create the environment as: `conda env create -f conda/environment.yml`. This will create a conda environment called `topic_p` (the name can be chnaged in the file).
+
+After installing the dependencies (creating the conda environment), clone the repository and run `pip install -e .` from the root directory. 
 
 Now you can do `import cuBERTopic` and you're good to go!
 
+Additionally, if you want to run and compare against `BERTopic` then you can find the instructions [here](https://github.com/MaartenGr/BERTopic). Essentially, just run: `pip install bertopic`
+
 ## Quick Start
 
-An [example](berttopic_example.ipynb) notebook is provided, which goes through the installation, as well as comparing response using [BERTopic](https://github.com/MaartenGr/BERTopic).
+An [example](berttopic_example.ipynb) notebook is provided, which goes through the installation, as well as comparing response using [BERTopic](https://github.com/MaartenGr/BERTopic). Make sure to install the dependencies by referring to the step above.
 
 ## Development
 
 Contributions to this codebase are welcome! 
 
-`environment.yml` file has been provided which included all the development dependencies. Using this file, you can create your own dev environment by running: 
+[conda-dev](conda/conda_dev_env.yml) file has been provided which included all the development dependencies. Using this file, you can create your own dev environment by running: 
 
 ```bash
-conda env create -f environment.yml
-conda activate rapids-21.10 #The first line of the yml file sets the new environment's name
+conda env create -f conda/conda_dev_env.yml
 ```
 
-To run existing tests, you can do `pytest -v` fromthe root directory, and more tests can be added under `tests` as well.
+We have written tests such that our correctness is verified by runnig `BERTopic` on the same input, hence it becomes a dependency to run our tests (`pip install bertopic`). Other Additional dependencies are `pytest` and `pytest-lazy-fixture`.
+
+To run existing tests, you can do `pytest -v` from the root directory, and more tests can be added under `tests` as well.
 
 ## Acknowledgement
 

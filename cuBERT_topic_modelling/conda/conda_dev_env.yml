@@ -1,4 +1,4 @@
-name: topic_p
+name: topic_dev
 channels:
   - rapidsai-nightly
   - nvidia
@@ -13,4 +13,6 @@ dependencies:
   - transformers
   - jupyterlab
   - scikit-learn
+  - pytest
+  - pytest-lazy-fixture
   
