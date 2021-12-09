@@ -60,7 +60,7 @@ conda create -n rapids-21.12 -c rapidsai-nightly -c nvidia -c conda-forge \
 conda activate rapids-21.12
 ```
 
-We also provide a conda environment file [here](conda/environment.yml), which you can use to create the environment as: `conda env create -f conda/environment.yml`. This will create a conda environment called `topic_p` (the name can be chnaged in the file). Remember to change it according to the CUDA version in your system.
+We also provide a conda environment file [here](conda/environment.yml), which you can use to create the environment as: `conda env create -f conda/environment.yml`. This will create a conda environment called `topic_p` (the name can be changed in the file). Remember to change it according to the CUDA version in your system.
 
 After installing the dependencies (creating the conda environment), clone the repository and run `pip install -e .` from the root directory. 
 
