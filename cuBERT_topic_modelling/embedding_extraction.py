@@ -85,15 +85,20 @@ def create_embeddings(sentences):
     model_pooler_output = []
     with torch.no_grad():
         for data in dataloader:
-            mapping = {}
-            mapping['input_ids'] = data[0]
-            mapping['attention_mask'] = data[1]
-            model_obj = model_gpu(**mapping)
+            model_obj = model_gpu(**{
+                'input_ids':data[0],
+                'attention_mask':data[1]
+                })
+            del data
             model_o_ls.append(model_obj.last_hidden_state)
             model_pooler_output.append(model_obj.pooler_output)
+            del model_obj
 
     model_stacked_lhs = torch.cat(model_o_ls)
     model_stacked_po = torch.cat(model_pooler_output)
+
+    del model_o_ls
+    del model_pooler_output
 
     bert_mod = transformers.\
         modeling_outputs.\
@@ -102,10 +107,14 @@ def create_embeddings(sentences):
             pooler_output=model_stacked_po
         )
 
+    del model_stacked_lhs
+    del model_stacked_po
+
     # Perform pooling. In this case, mean pooling
     sentence_embeddings_gpu = mean_pooling(
         bert_mod,
         encoded_input_cudf['attention_mask']
     )
 
+    del encoded_input_cudf
     return sentence_embeddings_gpu
