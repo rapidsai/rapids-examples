@@ -11,6 +11,7 @@ def input_data_docs_df():
         "This document is the second document.",
         "And this is the third one.",
         "Is this the first document?",
+        ""
     ]
 
     docs_df = pd.DataFrame(data_trivial, columns=["Document"])

@@ -25,13 +25,14 @@ class CountVecWrapper(CountVectorizer):
         doc = doc.str.filter_characters(
             {"a": "z", "0": "9", " ": " ", "A": "Z"}, True, ""
         )
-        doc[doc == ""] = "emptydoc"
-
+        
         # TODO: check if its required
         # sklearn by default removes tokens of
         # length 1, if its remove alphanumerics
         # if remove_single_token_len:
         doc = doc.str.filter_tokens(2)
+        doc = doc.str.strip()
+        doc[doc == ""] = "emptydoc"
 
         return doc
 
