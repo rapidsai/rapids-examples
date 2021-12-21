@@ -1,0 +1,16 @@
+name: topic_p
+channels:
+  - rapidsai-nightly
+  - nvidia
+  - pytorch
+  - conda-forge
+dependencies:
+  - cudf=21.12
+  - cuml=21.12
+  - python>=3.8
+  - cudatoolkit=11.3
+  - pytorch
+  - transformers
+  - jupyterlab
+  - scikit-learn
+  
