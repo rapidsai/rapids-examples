@@ -46,6 +46,10 @@ cuBERT_topic_modelling
 |   │   voc_has.txt
 |   |   vocab.txt
 |
+└───benchmarks
+|   │   benchmark_berttopic.ipynb
+|   |   benchmark_cuBERTopic.ipynb
+|
 ```
 
 ## Installation

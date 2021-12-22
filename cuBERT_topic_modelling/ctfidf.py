@@ -4,18 +4,17 @@ import cupy as cp
 from cuml.common.sparsefuncs import csr_row_normalize_l1
 
 
+# Reference: https://github.com/MaartenGr/BERTopic/blob/master/bertopic/_ctfidf.py
 class ClassTFIDF(TfidfTransformer):
     """
-    A Class-based TF-IDF procedure using scikit-learns
-    TfidfTransformer as a base. C-TF-IDF can best be
-    explained as a TF-IDF formula adopted for multiple classes
-    by joining all documents per class. Thus, each class
-    is converted to a single document instead of set of documents.
-    Then, the frequency of words **t** are extracted for
-    each class **i** and divided by the total number of
-    words **w**. Next, the total, unjoined, number of documents
-    across all classes **m** is divided by the total sum of
-    word **i** across all classes.
+    A Class-based TF-IDF procedure using cuml's
+    TfidfTransformer as a base. BERTopic highlights a
+    very useful approach, a variant of TF-IDF known as c-TF-IDF
+    or class based TF-IDF. Applying  TF-IDF on a set of documents,
+    we get the relative importance of words between documents but if
+    we group all documents with the same cluster ID, we get the scores
+    for words within a cluster (topic). The words with the highest scores
+    will represent the theme of that cluster.
     """
 
     def __init__(self, *args, **kwargs):
