@@ -2,6 +2,7 @@ import cupy as cp
 from cuml.metrics import pairwise_distances
 
 
+# Reference: https://github.com/MaartenGr/BERTopic/blob/master/bertopic/_mmr.py
 def mmr(
     doc_embedding,
     word_embeddings,
