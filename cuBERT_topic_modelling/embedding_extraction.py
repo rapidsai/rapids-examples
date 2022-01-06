@@ -2,7 +2,6 @@ from cudf.core.subword_tokenizer import SubwordTokenizer, _cast_to_appropriate_t
 import torch
 from torch.utils.data import TensorDataset, DataLoader
 
-import time
 
 # Vocabulary is included in the root directory of this repo
 # however, below is the command to modify / update it -->
@@ -74,7 +73,7 @@ def create_embeddings(sentences, embedding_model, vocab_file="vocab/voc_hash.txt
     cudf_tokenizer = SubwordTokenizer(vocab_file, do_lower_case=True)
     batch_size = 64
     pooling_output_ls = []
-    model_st = time.time()
+
     with torch.no_grad():
         for s_ind in range(0, len(sentences), batch_size):
             e_ind = min(s_ind + batch_size, len(sentences))
@@ -90,7 +89,4 @@ def create_embeddings(sentences, embedding_model, vocab_file="vocab/voc_hash.txt
             pooling_output_ls.append(mean_pooling(model_obj, b_attention_mask))
 
     pooling_output = torch.cat(pooling_output_ls)
-    model_et = time.time()
-    print(f"DL time = {model_et-model_st}")
-
     return pooling_output
