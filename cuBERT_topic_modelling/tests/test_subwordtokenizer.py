@@ -16,27 +16,26 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 def test_tokenization():
-    data = fetch_20newsgroups(subset="all")["data"]
-    ## sentence number 11927 is being encoded different in \
-    ## AutoTokenizer and cuDF's SubwordTokenizer"
-    data = data[:11927] + data[11928:]
 
     cudf_tokenizer = SubwordTokenizer(
         hash_file="vocab/voc_hash.txt", do_lower_case=True
     )
-
-    cudf_td = tokenize_strings(cudf.Series(data), tokenizer=cudf_tokenizer)
-
     st_model = SentenceTransformer("all-MiniLM-L6-v2")
-    st_td = st_model.tokenize(data)
 
-    np.testing.assert_array_almost_equal(
-        cudf_td["attention_mask"].to("cpu").numpy(), st_td["attention_mask"].numpy()
-    )
+    input_data = fetch_20newsgroups(subset="all")["data"]
+    ## sentence number 11927 is being encoded different in \
+    ## AutoTokenizer and cuDF's SubwordTokenizer"
+    input_data = input_data[:11927] + input_data[11928:]
 
-    np.testing.assert_equal(
-        cudf_td["attention_mask"].to("cpu").numpy(), st_td["attention_mask"].numpy()
-    )
+    for data in [input_data, input_data[0:31], input_data[44:192], input_data[192:197]]:
+        cudf_td = tokenize_strings(cudf.Series(data), tokenizer=cudf_tokenizer)
+        st_td = st_model.tokenize(data)
+        np.testing.assert_equal(
+            cudf_td["input_ids"].to("cpu").numpy(), st_td["input_ids"].numpy()
+        )
+        np.testing.assert_equal(
+            cudf_td["attention_mask"].to("cpu").numpy(), st_td["attention_mask"].numpy()
+        )
 
 
 ## Todo: Remove Below
