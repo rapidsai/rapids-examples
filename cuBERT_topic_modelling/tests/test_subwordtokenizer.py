@@ -5,13 +5,40 @@ import cupy as cp
 from sklearn.datasets import fetch_20newsgroups
 import cudf
 import pytest
-from embedding_extraction import mean_pooling, create_embeddings
+from embedding_extraction import mean_pooling, create_embeddings, tokenize_strings
+from sentence_transformers import SentenceTransformer
+
 from cudf.core.subword_tokenizer import SubwordTokenizer
 from torch.utils.dlpack import to_dlpack, from_dlpack
 
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+
+def test_tokenization():
+
+    cudf_tokenizer = SubwordTokenizer(
+        hash_file="vocab/voc_hash.txt", do_lower_case=True
+    )
+    st_model = SentenceTransformer("all-MiniLM-L6-v2")
+
+    input_data = fetch_20newsgroups(subset="all")["data"]
+    ## sentence number 11927 is being encoded different in \
+    ## AutoTokenizer and cuDF's SubwordTokenizer"
+    input_data = input_data[:11927] + input_data[11928:]
+
+    for data in [input_data, input_data[0:31], input_data[44:192], input_data[192:197]]:
+        cudf_td = tokenize_strings(cudf.Series(data), tokenizer=cudf_tokenizer)
+        st_td = st_model.tokenize(data)
+        np.testing.assert_equal(
+            cudf_td["input_ids"].to("cpu").numpy(), st_td["input_ids"].numpy()
+        )
+        np.testing.assert_equal(
+            cudf_td["attention_mask"].to("cpu").numpy(), st_td["attention_mask"].numpy()
+        )
+
+
+## Todo: Remove Below
 def fix_padding(tnsr):
     """Function to fix padding on a torch.Tensor object
 
@@ -29,21 +56,23 @@ def fix_padding(tnsr):
     dx = to_dlpack(tnsr)
     embeddings_collecton = cp.fromDlpack(dx)
     for embeddings in embeddings_collecton:
-        trimmed = cp.trim_zeros(embeddings, trim='b')
+        trimmed = cp.trim_zeros(embeddings, trim="b")
         max_arr_length = max(max_arr_length, len(trimmed))
         trimmed_collections.append(trimmed)
 
     first_arr_stack = cp.pad(
         trimmed_collections[0],
-        (0, max_arr_length-len(trimmed_collections[0])),
-        'constant')
+        (0, max_arr_length - len(trimmed_collections[0])),
+        "constant",
+    )
 
     # Add the required padding back
     for a in range(1, len(trimmed_collections)):
         padded = cp.pad(
             trimmed_collections[a],
-            (0, max_arr_length-len(trimmed_collections[a])),
-            'constant')
+            (0, max_arr_length - len(trimmed_collections[a])),
+            "constant",
+        )
         first_arr_stack = cp.vstack([first_arr_stack, padded])
         # Convert it back to a PyTorch tensor.
     tx2 = from_dlpack(first_arr_stack.toDlpack())
@@ -58,6 +87,7 @@ def fix_padding(tnsr):
 
     return tx2
 
+
 # Sentences we want sentence embeddings for
 @pytest.fixture
 def input_sentences_fixture():
@@ -67,81 +97,62 @@ def input_sentences_fixture():
 
 def run_embedding_creation_transformers(sentences):
     # Load AutoModel from huggingface model repository
-    tokenizer = AutoTokenizer.from_pretrained(
-        "sentence-transformers/all-MiniLM-L6-v2"
-    )
+    tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
 
     # Tokenize sentences
     encoded_input = tokenizer(
-        sentences,
-        padding=True,
-        truncation=True,
-        max_length=128,
-        return_tensors="pt"
+        sentences, padding=True, truncation=True, max_length=128, return_tensors="pt"
     )
 
-    model = AutoModel.from_pretrained(
-        "sentence-transformers/all-MiniLM-L6-v2"
-    )
+    model = AutoModel.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
 
     # Compute token embeddings
     with torch.no_grad():
         model_output = model(**encoded_input)
 
     # Perform pooling. In this case, mean pooling
-    sentence_embeddings = mean_pooling(
-        model_output,
-        encoded_input["attention_mask"]
-    )
+    sentence_embeddings = mean_pooling(model_output, encoded_input["attention_mask"])
 
     return sentence_embeddings
 
-@pytest.mark.xfail(
-    reason="sentence number 11927 is being encoded different in \
-        AutoTokenizer and cuDF's SubwordTokenizer",
-    strict=True)
-def test_custom_tokenizer(input_sentences_fixture):
-    sentence_embeddings_gpu = create_embeddings(
-        cudf.Series(input_sentences_fixture)
-    )
-    sentence_embeddings = run_embedding_creation_transformers(
-        input_sentences_fixture
-    )
-    np.testing.assert_array_almost_equal(
-        sentence_embeddings.to("cpu").numpy(),
-        sentence_embeddings_gpu.to("cpu").numpy()
-    )
 
 @pytest.mark.xfail(
     reason="sentence number 11927 is being encoded different in \
         AutoTokenizer and cuDF's SubwordTokenizer",
-    strict=True)
-def test_encoded_input(input_sentences_fixture):
-    cudf_tokenizer = SubwordTokenizer(
-        'vocab/voc_hash.txt',
-        do_lower_case=True
+    strict=True,
+)
+def test_custom_tokenizer(input_sentences_fixture):
+    sentence_embeddings_gpu = create_embeddings(cudf.Series(input_sentences_fixture))
+    sentence_embeddings = run_embedding_creation_transformers(input_sentences_fixture)
+    np.testing.assert_array_almost_equal(
+        sentence_embeddings.to("cpu").numpy(), sentence_embeddings_gpu.to("cpu").numpy()
     )
+
+
+@pytest.mark.xfail(
+    reason="sentence number 11927 is being encoded different in \
+        AutoTokenizer and cuDF's SubwordTokenizer",
+    strict=True,
+)
+def test_encoded_input(input_sentences_fixture):
+    cudf_tokenizer = SubwordTokenizer("vocab/voc_hash.txt", do_lower_case=True)
     input_sentences_fixture_cudf = cudf.Series(input_sentences_fixture)
     # Tokenize sentences
     encoded_input_cudf = cudf_tokenizer(
         input_sentences_fixture_cudf,
         max_length=128,
         max_num_rows=len(input_sentences_fixture_cudf),
-        padding='max_length',
-        return_tensors='pt',
-        truncation=True
-    )
-    
-    encoded_input_cudf['input_ids'] = fix_padding(
-        encoded_input_cudf['input_ids']
-    )
-    encoded_input_cudf['attention_mask'] = fix_padding(
-        encoded_input_cudf['attention_mask']
+        padding="max_length",
+        return_tensors="pt",
+        truncation=True,
     )
 
-    tokenizer = AutoTokenizer.from_pretrained(
-        "sentence-transformers/all-MiniLM-L6-v2"
+    encoded_input_cudf["input_ids"] = fix_padding(encoded_input_cudf["input_ids"])
+    encoded_input_cudf["attention_mask"] = fix_padding(
+        encoded_input_cudf["attention_mask"]
     )
+
+    tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
 
     # Tokenize sentences
     encoded_input = tokenizer(
@@ -149,15 +160,14 @@ def test_encoded_input(input_sentences_fixture):
         padding=True,
         truncation=True,
         max_length=128,
-        return_tensors="pt"
+        return_tensors="pt",
     )
-    
+
     np.testing.assert_array_almost_equal(
-        encoded_input_cudf['attention_mask'].to('cpu').numpy(),
-        encoded_input['attention_mask'].numpy()
+        encoded_input_cudf["attention_mask"].to("cpu").numpy(),
+        encoded_input["attention_mask"].numpy(),
     )
     np.testing.assert_array_almost_equal(
-        encoded_input_cudf['input_ids'].to('cpu').numpy(),
-        encoded_input['input_ids'].numpy()
+        encoded_input_cudf["input_ids"].to("cpu").numpy(),
+        encoded_input["input_ids"].numpy(),
     )
-    

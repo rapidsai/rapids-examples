@@ -10,17 +10,29 @@ from utils.sparse_matrix_utils import top_n_idx_sparse
 from vectorizer.vectorizer import CountVecWrapper
 import math
 from embedding_extraction import create_embeddings
+from transformers import AutoModel
+
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class gpu_BERTopic:
-    def __init__(self):
+    def __init__(self, embedding_model=None, vocab_file=None):
         self.top_n_words = None
         self.topic_sizes_df = None
         self.original_topic_mapping = None
         self.new_topic_mapping = None
         self.final_topic_mapping = None
+        if embedding_model is None:
+            embedding_model = AutoModel.from_pretrained(
+                "sentence-transformers/all-MiniLM-L6-v2"
+            ).to(device)
+
+        if vocab_file is None:
+            vocab_file =  "vocab/voc_hash.txt"
+            
+        self.vocab_file = vocab_file
+        self.embedding_model = embedding_model
 
     # Dimensionality reduction
     def reduce_dimensionality(self, embeddings):
@@ -55,9 +67,7 @@ class gpu_BERTopic:
             represents the likelihood of the doc belonging to a cluster.
         """
         cluster = cuml.cluster.HDBSCAN(
-            min_cluster_size=10,
-            metric="euclidean",
-            cluster_selection_method="eom"
+            min_cluster_size=10, metric="euclidean", cluster_selection_method="eom"
         ).fit(umap_embeddings)
 
         documents["Topic"] = cluster.labels_
@@ -156,11 +166,7 @@ class gpu_BERTopic:
                     cudf.Series(" ".join(words_arr))
                 ).reshape(1, -1)
                 topic_words = mmr(
-                    topic_embedding,
-                    word_embeddings,
-                    words,
-                    top_n=n,
-                    diversity=0
+                    topic_embedding, word_embeddings, words, top_n=n, diversity=0
                 )
                 top_n_words[topic] = [
                     (word, value)
@@ -168,9 +174,7 @@ class gpu_BERTopic:
                     if word in topic_words
                 ]
 
-        top_n_words = {
-            label: values[:n] for label, values in top_n_words.items()
-        }
+        top_n_words = {label: values[:n] for label, values in top_n_words.items()}
 
         topic_names = {
             key: f"{key}_" + "_".join([word[0] for word in values[:4]])
@@ -213,7 +217,7 @@ class gpu_BERTopic:
 
         # Extract embeddings
         embeddings = create_embeddings(
-            documents.Document
+            documents.Document, self.embedding_model, self.vocab_file
         )
 
         # Reduce dimensionality with UMAP
@@ -221,24 +225,17 @@ class gpu_BERTopic:
         del embeddings
 
         # Cluster UMAP embeddings with HDBSCAN
-        documents, probabilities = self.clustering_hdbscan(
-            umap_embeddings,
-            documents
-        )
+        documents, probabilities = self.clustering_hdbscan(umap_embeddings, documents)
 
         del umap_embeddings
 
         # Topic representation
-        tf_idf, count, docs_per_topics_topics = self.create_topics(
-            documents
-        )
+        tf_idf, count, docs_per_topics_topics = self.create_topics(documents)
         top_n_words, name_repr = self.extract_top_n_words_per_topic(
             tf_idf, count, docs_per_topics_topics, n=30
         )
 
-        self.topic_sizes_df["Name"] = self.topic_sizes_df["Topic"].map(
-            name_repr
-        )
+        self.topic_sizes_df["Name"] = self.topic_sizes_df["Topic"].map(name_repr)
         self.top_n_words = top_n_words
         predictions = documents.Topic
 
@@ -254,9 +251,7 @@ class gpu_BERTopic:
             c-TF-IDF scores
         """
 
-        return self.top_n_words[
-            int(self.final_topic_mapping[0][topic+1])
-        ][:num_words]
+        return self.top_n_words[int(self.final_topic_mapping[0][topic + 1])][:num_words]
 
     def get_topic_info(self):
         """Get information about each topic including its id, frequency, and name
@@ -267,25 +262,20 @@ class gpu_BERTopic:
 
         # Note: getting topics in sorted order without using
         # TopicMapper, as in BERTopic
-        topic_sizes_df_columns = self.topic_sizes_df.Name.str.split(
-            "_", expand=True
-        )[[0, 1, 2, 3, 4]]
+        topic_sizes_df_columns = self.topic_sizes_df.Name.str.split("_", expand=True)[
+            [0, 1, 2, 3, 4]
+        ]
         self.original_topic_mapping = topic_sizes_df_columns[0]
 
         self.new_topic_mapping = self.topic_sizes_df["Topic"].sort_values()
 
-        self.original_topic_mapping = self.original_topic_mapping.astype(
-            "int64"
-        )
+        self.original_topic_mapping = self.original_topic_mapping.astype("int64")
         new_mapping_values = self.new_topic_mapping.values
         new_mapping_series = self.new_topic_mapping.reset_index(drop=True)
-        original_mapping_series = self.original_topic_mapping.reset_index(
-            drop=True
+        original_mapping_series = self.original_topic_mapping.reset_index(drop=True)
+        self.final_topic_mapping = cudf.concat(
+            [new_mapping_series, original_mapping_series], axis=1
         )
-        self.final_topic_mapping = cudf.concat([new_mapping_series,
-                                                original_mapping_series],
-                                                axis=1
-                                                )
 
         topic_sizes_df_columns[0] = new_mapping_values
         topic_sizes_df_columns["Name"] = (
