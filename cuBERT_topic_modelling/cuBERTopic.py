@@ -6,12 +6,13 @@ from cuml.manifold import UMAP
 import cupy as cp
 from ctfidf import ClassTFIDF
 from mmr import mmr
-from utils.sparse_matrix_utils import top_n_idx_sparse
+from utils.sparse_matrix_utils import top_n_sparse
 from vectorizer.vectorizer import CountVecWrapper
 import math
 from embedding_extraction import create_embeddings
 from transformers import AutoModel
 
+import time
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -29,8 +30,8 @@ class gpu_BERTopic:
             ).to(device)
 
         if vocab_file is None:
-            vocab_file =  "vocab/voc_hash.txt"
-            
+            vocab_file = "vocab/voc_hash.txt"
+
         self.vocab_file = vocab_file
         self.embedding_model = embedding_model
 
@@ -110,28 +111,23 @@ class gpu_BERTopic:
         Returns:
             tf_idf: The resulting matrix giving a value (importance score) for
             each word per topic
-            count: object of class CountVecWrapper, which inherits from
+            vectorizer: object of class CountVecWrapper, which inherits from
             CountVectorizer
-            docs_per_topics_topics: A list of unique topic labels
+            topic_labels: A list of unique topic labels
         """
-        docs_per_topics_topics = docs_df["Topic"].unique()
+        topic_labels = docs_df["Topic"].unique()
 
-        tf_idf, count = self.new_c_tf_idf(docs_df, len(docs_df))
-        return tf_idf, count, docs_per_topics_topics
+        tf_idf, vectorizer = self.new_c_tf_idf(docs_df, len(docs_df))
+        return tf_idf, vectorizer, topic_labels
 
     # Topic representation
-    def extract_top_n_words_per_topic(
-        self, tf_idf, count, docs_per_topics_topics, mmr_flag=False, n=30
-    ):
+    def extract_top_n_words_per_topic(self, tf_idf, vectorizer, labels, n=30):
         """Based on tf_idf scores per topic, extract the top n words per topic
 
         Arguments:
             tf_idf: A c-TF-IDF matrix from which to calculate the top words
-            count: object of class CountVecWrapper, which is derived
-            from CountVectorizer
-            docs_per_topics_topics: A list of unique topic labels
-            mmr_flag: Boolean value indicating whether or not we want
-            to run MMR
+            vectorizer: object of class CountVecWrapper, which is derived from CountVectorizer
+            labels: A list of unique topic labels
             n: number of words per topic (Default: 30)
         Returns:
             top_n_words: The top n words per topic
@@ -139,48 +135,31 @@ class gpu_BERTopic:
             as top 4 words from that topic cluster
         """
 
-        words = count.get_feature_names().to_arrow().to_pylist()
-        labels = sorted(docs_per_topics_topics.to_arrow().to_pylist())
-        indices = top_n_idx_sparse(tf_idf, n)
-        indices = indices.get()
+        words = vectorizer.get_feature_names().to_arrow().to_pylist()
+        labels = sorted(labels.to_arrow().to_pylist())
+        indices, scores = top_n_sparse(tf_idf, n)
+        sorted_indices = cp.argsort(scores, 1)
+
+        indices = cp.take_along_axis(indices, sorted_indices, axis=1).get()
+        scores = cp.take_along_axis(scores, sorted_indices, axis=1).get()
 
         top_n_words = {}
-        for i, label in enumerate(labels):
-            list_labels = []
-            indices_row = indices[i]
-            for idx in indices_row:
-                if not math.isnan(idx):
-                    idx = int(idx)
-                    if idx and tf_idf[i, idx] > 0:
-                        list_labels.append((words[idx], tf_idf[i, idx]))
-                    else:
-                        list_labels.append(("", 0.00001))
-            top_n_words[label] = list_labels[::-1]
-
-        if mmr_flag:
-            for topic, topic_words in top_n_words.items():
-                words_arr = [word[0] for word in topic_words]
-                words = cudf.Series(words_arr, name="Document")
-                word_embeddings = create_embeddings(words)
-                topic_embedding = create_embeddings(
-                    cudf.Series(" ".join(words_arr))
-                ).reshape(1, -1)
-                topic_words = mmr(
-                    topic_embedding, word_embeddings, words, top_n=n, diversity=0
-                )
-                top_n_words[topic] = [
-                    (word, value)
-                    for word, value in top_n_words[topic]
-                    if word in topic_words
-                ]
-
-        top_n_words = {label: values[:n] for label, values in top_n_words.items()}
+        # Get top 30 words per topic based on c-TF-IDF score
+        topics = {
+            label: [
+                (words[word_index], score)
+                if word_index and score > 0
+                else ("", 0.00001)
+                for word_index, score in zip(indices[index][::-1], scores[index][::-1])
+            ]
+            for index, label in enumerate(labels)
+        }
 
         topic_names = {
             key: f"{key}_" + "_".join([word[0] for word in values[:4]])
             for key, values in top_n_words.items()
         }
-        return top_n_words, topic_names
+        return topics, topic_names
 
     def extract_topic_sizes(self, df):
         """Calculate the topic sizes
@@ -230,9 +209,9 @@ class gpu_BERTopic:
         del umap_embeddings
 
         # Topic representation
-        tf_idf, count, docs_per_topics_topics = self.create_topics(documents)
+        tf_idf, count, labels = self.create_topics(documents)
         top_n_words, name_repr = self.extract_top_n_words_per_topic(
-            tf_idf, count, docs_per_topics_topics, n=30
+            tf_idf, count, labels, n=30
         )
 
         self.topic_sizes_df["Name"] = self.topic_sizes_df["Topic"].map(name_repr)
