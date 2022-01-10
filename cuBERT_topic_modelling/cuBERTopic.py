@@ -143,7 +143,6 @@ class gpu_BERTopic:
         indices = cp.take_along_axis(indices, sorted_indices, axis=1).get()
         scores = cp.take_along_axis(scores, sorted_indices, axis=1).get()
 
-        top_n_words = {}
         # Get top 30 words per topic based on c-TF-IDF score
         topics = {
             label: [
@@ -157,7 +156,7 @@ class gpu_BERTopic:
 
         topic_names = {
             key: f"{key}_" + "_".join([word[0] for word in values[:4]])
-            for key, values in top_n_words.items()
+            for key, values in topics.items()
         }
         return topics, topic_names
 
