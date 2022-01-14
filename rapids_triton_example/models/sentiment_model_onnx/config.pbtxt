@@ -1,6 +1,6 @@
 # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
 
-name: "sentiment_onnx_model"
+name: "sentiment_model_onnx"
 backend: "onnxruntime"
 
 input [

@@ -1,6 +1,6 @@
 # Copyright (c) 2020, NVIDIA CORPORATION. All rights reserved.
 
-name: "sentiment_analysis_model"
+name: "sentiment_model_pytorch"
 backend: "python"
 
 input [
@@ -26,10 +26,6 @@ instance_group [{ kind: KIND_GPU }]
 
 parameters: 
 [
-    {
-      key: "FORCE_CPU_ONLY_INPUT_TENSORS" 
-      value: {string_value:"yes"}
-    },
     {
       key: "EXECUTION_ENV_PATH"
       value: {string_value: "/root/miniconda3/envs/rapids/rapids.tar.gz"}
