@@ -55,7 +55,7 @@ class gpu_BERTopic:
         return umap_embeddings
 
     # Clustering step
-    def clustering_hdbscan(self, umap_embeddings, documents):
+    def cluster_embeddings(self, umap_embeddings, documents):
         """Cluster UMAP embeddings with HDBSCAN
 
         Args:
@@ -203,7 +203,7 @@ class gpu_BERTopic:
         del embeddings
 
         # Cluster UMAP embeddings with HDBSCAN
-        documents, probabilities = self.clustering_hdbscan(umap_embeddings, documents)
+        documents, probabilities = self.cluster_embeddings(umap_embeddings, documents)
 
         del umap_embeddings
 
