@@ -1,46 +1,84 @@
+import os
+os.environ['NVCC']="/usr/local/cuda-11.5/bin/nvcc"
 import cupy as cp
+from numba import cuda
+import math 
+
+##  Cuda JIT 
+code = """
+#include <thrust/count.h>
+extern "C" __global__
+void sort_sparse_array(double *data, int*indices, int *indptr, int n_rows)
+{
+      int tid = blockDim.x * blockIdx.x + threadIdx.x;
+      if(tid >= n_rows) return;
+      thrust::sort_by_key(thrust::seq, data+ indptr[tid], data + indptr[tid+1], indices + indptr[tid]);     
+}
+"""
+
+kernel = cp.RawModule(code=code,backend='nvcc')
+sort_f = kernel.get_function("sort_sparse_array")
+
+## Numba function
+@cuda.jit
+def find_top_k_values(data, indices, indptr, output_values_ar , output_idx_ar, k, n_rows):
+    gid = cuda.grid(1)
+    
+    if gid >= n_rows:
+        return
+   
+    row_st_ind = indptr[gid]
+    row_end_ind = indptr[gid+1]-1
+    
+    k = min(k, 1+row_end_ind-row_st_ind)        
+    for i in range(0,k):
+        index = row_st_ind+i
+        if data[index]!=0:
+            output_values_ar[gid][i] = data[index]
+            output_idx_ar[gid][i] = indices[index]
+
+def find_top_k_values_sparse_matrix(X, k):
+    
+    X = X.copy()
+    
+    ### Output arrays to save the top k values 
+    values_ar = cp.full(fill_value = 0,shape=(X.shape[0],k), dtype=cp.float64)
+    idx_ar = cp.full(fill_value = -1,shape=(X.shape[0],k), dtype=cp.int32)
+    
+    ### sort in decreasing order
+    X.data = X.data * -1
+    sort_f((math.ceil(X.shape[0] / 32),), (32,),(X.data, X.indices, X.indptr, X.shape[0]))
+    X.data = X.data * -1
+
+    
+    ## configure kernel based on number of tasks
+    find_top_k_values_k = find_top_k_values.forall(X.shape[0])
+    
+    find_top_k_values_k(X.data, X.indices, X.indptr, values_ar , idx_ar, k, X.shape[0])
+
+    return idx_ar,values_ar
 
 
-def top_n_sparse(matrix, n):
+
+def top_n_sparse(X, n):
     """Return indices,values of top n values in each row of a sparse matrix
-    Retrieved from:
-        https://stackoverflow.com/questions/49207275/finding-the-top-n-values-in-a-row-of-a-scipy-sparse-matrix
     Args:
-        matrix: The sparse matrix from which to get the
-        top n indices per row
+        X: The sparse matrix from which to get the
+        top n indices and values per row
         n: The number of highest values to extract from each row
     Returns:
         indices: The top n indices per row
         values: The top n values per row
     """
-    top_n_idx = []
-    top_n_vals = []
-    mat_inptr_np_ar = matrix.indptr.get()
-    le_np = mat_inptr_np_ar[:-1]
-    ri_np = mat_inptr_np_ar[1:]
+    value_ls,idx_ls = [],[]
+    batch_size = 500
+    for s in range(0,X.shape[0],batch_size):
+        e = min(s+batch_size,X.shape[0])
+        idx_ar,value_ar  = find_top_k_values_sparse_matrix(X[s:e], n)
+        value_ls.append(value_ar)
+        idx_ls.append(idx_ar)
+        
+    indices = cp.concatenate(idx_ls)
+    values = cp.concatenate(value_ls)
 
-    for le, ri in zip(le_np, ri_np):
-        le = le.item()
-        ri = ri.item()
-        n_row_pick = min(n, ri - le)
-
-        top_indices = cp.argpartition(matrix.data[le:ri], -n_row_pick)[-n_row_pick:]
-        top_values_ar = cp.take(matrix.data[le:ri], top_indices)
-
-        top_indices_ar = matrix.indices[le + top_indices]
-
-        if len(top_indices_ar) != n:
-
-            buffered_indices_ar = cp.full(shape=n, fill_value=-1, dtype=cp.int32)
-            buffered_indices_ar[: len(top_indices_ar)] = top_indices_ar
-
-            buffered_values_ar = cp.full(shape=n, fill_value=0, dtype=cp.float32)
-            buffered_values_ar[: len(top_indices_ar)] = top_values_ar
-
-            top_indices_ar = buffered_indices_ar
-            top_values_ar = buffered_values_ar
-
-        top_n_idx.append(top_indices_ar)
-        top_n_vals.append(top_values_ar)
-
-    return cp.array(top_n_idx), cp.array(top_n_vals)
+    return indices,values

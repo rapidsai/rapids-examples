@@ -34,7 +34,7 @@ def mean_pooling(model_output, attention_mask):
 
 
 def tokenize_strings(sentences, tokenizer):
-    max_length = 128
+    max_length = 256
 
     # Tokenize cudf Series
     token_o = tokenizer(
@@ -71,7 +71,7 @@ def create_embeddings(sentences, embedding_model, vocab_file="vocab/voc_hash.txt
     """
 
     cudf_tokenizer = SubwordTokenizer(vocab_file, do_lower_case=True)
-    batch_size = 64
+    batch_size = 256
     pooling_output_ls = []
 
     with torch.no_grad():

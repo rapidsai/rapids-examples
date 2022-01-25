@@ -37,7 +37,7 @@ class ClassTFIDF(TfidfTransformer):
             _, n_features = X.shape
             df = cp.squeeze(cp.asarray(X.sum(axis=0)))
             avg_nr_samples = int(X.sum(axis=1).mean())
-            idf = cp.log(avg_nr_samples / df)
+            idf = cp.log((avg_nr_samples / df)+1)
             if multiplier is not None:
                 idf = idf * multiplier
             self._idf_diag = cupyx.scipy.sparse.diags(
