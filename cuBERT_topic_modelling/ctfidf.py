@@ -20,10 +20,12 @@ class ClassTFIDF(TfidfTransformer):
     def __init__(self, *args, **kwargs):
         super(ClassTFIDF, self).__init__(*args, **kwargs)
 
-    def fit(self,
-            X: cupyx.scipy.sparse.csr_matrix,
-            n_samples: int,
-            multiplier: cp.ndarray = None):
+    def fit(
+        self,
+        X: cupyx.scipy.sparse.csr_matrix,
+        n_samples: int,
+        multiplier: cp.ndarray = None,
+    ):
         """Learn the idf vector (global term weights).
         Arguments:
             X: A matrix of term/token counts.
@@ -37,7 +39,7 @@ class ClassTFIDF(TfidfTransformer):
             _, n_features = X.shape
             df = cp.squeeze(cp.asarray(X.sum(axis=0)))
             avg_nr_samples = int(X.sum(axis=1).mean())
-            idf = cp.log((avg_nr_samples / df)+1)
+            idf = cp.log((avg_nr_samples / df) + 1)
             if multiplier is not None:
                 idf = idf * multiplier
             self._idf_diag = cupyx.scipy.sparse.diags(

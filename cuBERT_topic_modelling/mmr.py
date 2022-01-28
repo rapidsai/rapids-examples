@@ -7,8 +7,8 @@ def mmr(
     doc_embedding,
     word_embeddings,
     words,
-    top_n = 5,
-    diversity = 0.8,
+    top_n=5,
+    diversity=0.8,
 ):
 
     """
@@ -45,22 +45,20 @@ def mmr(
         if i == 0:
             first_row = cp.reshape(
                 word_similarity[candidates_idx][:, keywords_idx],
-                (word_similarity[candidates_idx][:, keywords_idx].shape[0], 1)
+                (word_similarity[candidates_idx][:, keywords_idx].shape[0], 1),
             )
-            target_similarities = cp.max(
-                first_row, axis=1
-            ) 
+            target_similarities = cp.max(first_row, axis=1)
         else:
             target_similarities = cp.max(
-                    word_similarity[candidates_idx][:, keywords_idx], axis=1
-                )
+                word_similarity[candidates_idx][:, keywords_idx], axis=1
+            )
         # Calculate MMR
         mmr = (
             1 - diversity
         ) * candidate_similarities - diversity * target_similarities.reshape(-1, 1)
-        
+
         mmr_idx = cp.take(cp.array(candidates_idx), cp.argmax(mmr))
-        
+
         # Update keywords & candidates
         keywords_idx = cp.append(keywords_idx, mmr_idx)
         candidates_idx.remove(mmr_idx)
