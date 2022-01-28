@@ -1,3 +1,12 @@
+import os
+import warnings
+
+if "NVCC" not in os.environ:
+    os.environ["NVCC"] = "/usr/local/cuda-11.5/bin/nvcc"
+    warnings.warn(
+        "NVCC Path not found, set to  : /usr/local/cuda-11.5/bin/nvcc . \nPlease set NVCC as appropitate to your environment"
+    )
+
 import torch
 import cuml
 import cudf
