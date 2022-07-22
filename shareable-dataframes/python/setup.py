@@ -4,7 +4,7 @@ import sysconfig
 from distutils.sysconfig import get_python_lib
 
 import numpy
-from Cython.Distutils import build_ext
+from Cython.Build import cythonize
 from setuptools import Extension, find_packages, setup
 
 # Locate CUDA_HOME
@@ -64,7 +64,7 @@ setup(
         "Programming Language :: CUDA",
         "Programming Language :: Python",
     ],
-    ext_modules=[ext],
+    ext_modules=cythonize([ext]),
     packages=find_packages(include=["cudf", "cudf.*"]),
     zip_safe=False,
 )

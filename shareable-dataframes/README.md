@@ -21,8 +21,10 @@ This is similar to an existing [weather notebook](https://github.com/rapidsai/no
 2. Create the `shareable_dataframes` conda environment for the python code. 
     - ```conda env create -f /rapids/rapids-examples/shareable-dataframes/conda/shareable_dataframes.yml --name shareable_dataframes```
 3. Activate the `shareable_dataframes` conda environment ```conda activate shareable_dataframes```
-4. Build the cython kernel_wrapper code, this will also link against the previously compiled C++ code. 
-    - ```cd /rapids/rapids-examples/shareable-dataframes/python && python setup.py build install``` 
+4. Build the cython kernel_wrapper code, this will also link against the previously compiled C++ code.
+    - ```cd /rapids/rapids-examples/shareable-dataframes/python```
+    - ```python setup.py build_ext --inplace```
+    - ```python setup.py install```
 5. Download weather data. A convenience Python script has been provided here to make that easier for you. By default it will download years 2010-2020 weather data. That data is about 300MB per file so if you need to download less files you can change that in the script. The data will be downloaded to ./data/weather.
     - ```python /rapids/rapids-examples/shareable-dataframes/data/download_data.py```
 6. Run the Python example script. It expects an input of a single Weather year file. - EX: ```python /rapids/rapids-examples/shareable-dataframes/python/python_kernel_wrapper.py /rapids/rapids-examples/shareable-dataframes/python/data/weather/2010.csv.gz```
