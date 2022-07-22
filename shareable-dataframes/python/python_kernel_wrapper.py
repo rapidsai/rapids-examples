@@ -36,7 +36,7 @@ def read_df(weather_file_path):
 
     # Run the custom Kernel on the specified Dataframe Columns
     rainfall_kernel = cudfkernel.CudfWrapper(
-        rainfall_df._data.columns
+        [*rainfall_df.index._columns, *rainfall_df._columns]
     )  # Wrap the dataframe you want to perform Kernel calls on
     rainfall_kernel.cython_tenth_mm_to_inches(
         4
