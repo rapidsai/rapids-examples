@@ -11,7 +11,7 @@ install_requires = [
 
 setup(
     name="dask-metrics",
-    version="2021.8.12",
+    version="2021.8.20",
     description="A tool for collecting metrics on distributed Dask clusters",
     author="Travis Hester",
     packages=find_packages(include=["dask_metrics"]),

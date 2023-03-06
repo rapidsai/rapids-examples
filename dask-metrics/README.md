@@ -32,6 +32,7 @@ pip install .
 * **`timestamp`**: the time, in seconds, since the start of metric collection.
 
 ### Optional
+* **`tasks`**: the keys of the currently executing tasks
 * **`total-mem`**: the memory used, in bytes, by each GPU on a worker
 * **`mem-util`**: the memory utilization of each GPU on a worker as a percentage of total memory available.
 * **`compute-util`**: the compute utilization of each GPU on a worker as a percentage of maximum compute ability.

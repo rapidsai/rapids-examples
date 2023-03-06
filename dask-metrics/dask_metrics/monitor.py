@@ -677,6 +677,14 @@ class WorkerMonitor(WorkerPlugin):
         def compute_util(worker, handle):
             return pynvml.nvmlDeviceGetUtilizationRates(handle).gpu
 
+        @operation("tasks", per_device=False)
+        def tasks(worker, handles):
+            result = []
+            for key, state in worker.tasks.items():
+                if state.state == "executing":
+                    result.append(key)
+            return ", ".join(result)
+
         self.tracking_list = [o for o in operations if o["name"] in tracking]
         self.tracking_list += custom
         self.clear_metrics(clear_disk=True)
