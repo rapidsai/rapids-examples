@@ -1,0 +1,19 @@
+name: ucxx_cudf_example
+channels:
+  - rapidsai
+  - conda-forge
+  - nvidia
+dependencies:
+  - libcudf>=25.08
+  - libucxx>=0.40
+  - rmm>=25.08
+  - cmake>=3.26
+  - ninja
+  - cuda-version>=12.2
+  - cuda-nvcc
+  - gcc_linux-64>=13
+  - gxx_linux-64>=13
+  - spdlog
+  - fmt
+  - python>=3.10
+  # Note: libcudf 25.x requires C++20
