@@ -45,7 +45,6 @@ RUN conda env create -f /rapids/ucxx_cudf_example/conda/ucxx_cudf_example.yml
 RUN source activate ucxx_cudf_example \
     && cmake \
         -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_CUDA_ARCHITECTURES=native \
         -S /rapids/ucxx_cudf_example \
         -B /rapids/ucxx_cudf_example/build \
     && cmake --build /rapids/ucxx_cudf_example/build -j${PARALLEL_LEVEL}

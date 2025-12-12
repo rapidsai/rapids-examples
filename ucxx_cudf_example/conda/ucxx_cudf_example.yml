@@ -10,7 +10,7 @@ dependencies:
   - cmake>=3.26
   - ninja
   - cuda-version>=12.2
-  - cuda-nvcc
+  - cuda-toolkit        # Provides CUDA runtime headers and CMake config
   - gcc_linux-64>=13
   - gxx_linux-64>=13
   - spdlog
