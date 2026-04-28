@@ -177,21 +177,21 @@ Additionally, the box plot has the `freq` parameter (default 15), which controls
 
 In the case that you might want to track some metric that is not provided by default, you can use custom metric functions to get the job done.
 
-Each custom metric function must take 2 arguments, even if they are unused: a `worker` object and a pynvml device `handle` (or handles).
+Each custom metric function must take 2 arguments, even if they are unused: a `worker` object and a `cuda.core.system.Device` `device` (or devices).
 
-An example custom metric function that tracks power usage across GPUs in a cluster might look like this:
+An example custom metric function that tracks fan speed across GPUs in a cluster might look like this:
 
 ```python
 from dask_metrics import custom_metric
 
 @custom_metric('power')
-def power_usage(worker, handle):
-    return pynvml.nvmlDeviceGetPowerUsage(handle)
+def fan_speed(worker, device):
+    return device.get_fan(0).speed
 ```
 
 You use the `custom_metric` decorator to indicate the name of this metric (what will show up as the column name) and whether this metric is run for all devices on a worker separately or all together at once (by setting the kwarg `per_device` in the decorator to `False`).
 
-The previous example is a case of the former and `handle` respresents a single device handle the function is run for. In the case of the latter, `handle` is actually passed a list of the pynvml device handles instead and allows you to make comparisons between all the values for each GPU at a point in time.
+The previous example is a case of the former and `device` respresents a single device handle the function is run for. In the case of the latter, `device` is actually passed a list of the `cuda.core.system.Device` objects instead and allows you to make comparisons between all the values for each GPU at a point in time.
 
 Note that custom metric functions are also passed a reference to the `Worker` object representing each worker, giving you access to track information about task states and and anything else Dask is up to.
 

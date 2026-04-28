@@ -11,8 +11,10 @@ import os
 import cudf
 import asyncio
 import time
-import pynvml
 import re
+
+
+from cuda.core import system
 
 
 def custom_metric(name, per_device=True):
@@ -595,7 +597,6 @@ class WorkerMonitor(WorkerPlugin):
     def start_recording(self):
         self.start = time.time()
         self.stop = 0
-        pynvml.nvmlInit()
 
         # start loop
         self.loop = asyncio.ensure_future(self.log_metrics())
@@ -604,7 +605,6 @@ class WorkerMonitor(WorkerPlugin):
         self.stop = time.time()
         if not self.loop.cancelled():
             self.loop.cancel()  # shut down the loop
-        pynvml.nvmlShutdown()
 
     async def shutdown(self):
         self.stop_recording()
@@ -666,16 +666,16 @@ class WorkerMonitor(WorkerPlugin):
             return op
 
         @operation("total-mem")
-        def total_mem(worker, handle):
-            return pynvml.nvmlDeviceGetMemoryInfo(handle).used
+        def total_mem(worker, device):
+            return device.memory_info.used
 
         @operation("mem-util")
-        def mem_util(worker, handle):
-            return pynvml.nvmlDeviceGetUtilizationRates(handle).memory
+        def mem_util(worker, device):
+            return device.utilization.memory
 
         @operation("compute-util")
-        def compute_util(worker, handle):
-            return pynvml.nvmlDeviceGetUtilizationRates(handle).gpu
+        def compute_util(worker, device):
+            return device.utilization.gpu
 
         self.tracking_list = [o for o in operations if o["name"] in tracking]
         self.tracking_list += custom
@@ -698,7 +698,7 @@ class WorkerMonitor(WorkerPlugin):
         self.metrics_on_disk = True
 
     async def log_metrics(self):
-        ## the loop that polls the gpu for metrics using pynvml
+        ## the loop that polls the gpu for metrics using cuda.core.system
         while self.stop == 0:
             # universal metrics always tracked
             self.metrics["job"].append(self.job_number)
@@ -716,13 +716,12 @@ class WorkerMonitor(WorkerPlugin):
 
     def device_info(self, operation):
         ## applies operation over all device handles and returns the results
-        device_count = pynvml.nvmlDeviceGetCount()
-        handles = [pynvml.nvmlDeviceGetHandleByIndex(i) for i in range(device_count)]
+        devices = list(system.Device.get_all_devices())
         if operation["per_device"]:
-            results = [str(operation["op"](self.worker, handle)) for handle in handles]
+            results = [str(operation["op"](self.worker, device)) for device in devices]
             return ", ".join(results)  # join together with commas
         else:
-            return operation["op"](self.worker, handles)
+            return operation["op"](self.worker, devices)
 
 
 class MetricState(Enum):
