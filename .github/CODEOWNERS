@@ -1,3 +1,5 @@
+# default codeowners (overridden by more specific matches below)
+* @rapidsai/deployment-write
 
 # Ops code owners
 /SECURITY.md             @rapidsai/ops-codeowners
