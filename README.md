@@ -1,5 +1,10 @@
 # Rapids Examples
 
+> [!WARNING]
+> This project has been archived.
+>
+> For updated examples on using RAPIDS, see https://docs.rapids.ai/deployment/stable/examples/
+
 ### Assumptions
 1. [Conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install) is installed.
 2. [CUDA](https://developer.nvidia.com/cuda-downloads) 10.0 > is installed and on the PATH.
