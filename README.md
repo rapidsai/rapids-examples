@@ -3,7 +3,7 @@
 > [!WARNING]
 > This project has been archived.
 >
-> For updated examples on using RAPIDS, see https://docs.rapids.ai/deployment/stable/examples/
+> For updated RAPIDS examples, see https://docs.rapids.ai/deployment/stable/examples/
 
 ### Assumptions
 1. [Conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install) is installed.
